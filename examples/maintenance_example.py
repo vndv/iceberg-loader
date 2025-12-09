@@ -1,7 +1,7 @@
 import logging
 
 from catalog import get_catalog
-from iceberg_loader.maintenance import SnapshotMaintenance
+from iceberg_loader import expire_snapshots
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,8 +17,7 @@ def main() -> None:
     logger.info("Running snapshot maintenance for table: %s", table_id)
     table = catalog.load_table(table_id)
 
-    # Keep last 2 snapshots; alternatively pass older_than_ms for time-based cleanup
-    SnapshotMaintenance().expire_snapshots(table, keep_last=2)
+    expire_snapshots(table, keep_last=2)
 
 
 if __name__ == "__main__":

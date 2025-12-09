@@ -31,7 +31,15 @@ Although **PyIceberg** is the official and powerful library for interacting with
 ## Installation
 
 ```console
-pip install iceberg-loader
+pip install "iceberg-loader>=0.0.1"
+```
+
+For Hive/S3 backends install with extras:
+
+```console
+pip install "iceberg-loader[hive]"   # HiveCatalog
+pip install "iceberg-loader[s3]"     # S3Catalog
+pip install "iceberg-loader[all]"    # both
 ```
 
 ## Usage
@@ -129,6 +137,15 @@ load_data_to_iceberg(
     ...,
     table_properties=custom_props
 )
+```
+
+### Maintenance helper
+
+```python
+from iceberg_loader import expire_snapshots
+
+table = catalog.load_table(("db", "users"))
+expire_snapshots(table, keep_last=2)
 ```
 
 ## Development

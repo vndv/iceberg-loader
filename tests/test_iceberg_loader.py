@@ -69,6 +69,20 @@ class TestIcebergLoader(unittest.TestCase):
 
         mock_table.transaction.return_value.__enter__.return_value.overwrite.assert_called()
 
+    def test_load_data_append_replace_filter(self):
+        mock_table = MagicMock()
+        self.mock_catalog.load_table.return_value = mock_table
+        expected_iceberg_schema = self.loader._convert_arrow_to_iceberg_schema(self.arrow_schema)
+        mock_table.schema.return_value = expected_iceberg_schema
+
+        txn = mock_table.transaction.return_value.__enter__.return_value
+        self.loader.load_data(
+            self.arrow_table, self.table_identifier, write_mode='append', replace_filter="date_col == '2023-01-01'"
+        )
+
+        txn.delete.assert_called_once_with("date_col == '2023-01-01'")
+        txn.append.assert_called_once()
+
     def test_public_api_wrapper(self):
         with patch('iceberg_loader.iceberg_loader.IcebergLoader') as mock_loader_cls:
             mock_instance = mock_loader_cls.return_value
@@ -78,6 +92,67 @@ class TestIcebergLoader(unittest.TestCase):
 
             mock_loader_cls.assert_called_with(self.mock_catalog, None)
             mock_instance.load_data.assert_called_once()
+
+    def test_field_ids_preserved_on_evolution(self):
+        base_schema = self.loader._convert_arrow_to_iceberg_schema(self.arrow_schema)
+        extended_arrow = pa.schema(
+            [
+                pa.field('id', pa.int64()),
+                pa.field('name', pa.string()),
+                pa.field('date_col', pa.date32()),
+                pa.field('extra', pa.string()),
+            ]
+        )
+        evolved = self.loader._convert_arrow_to_iceberg_schema(extended_arrow, existing_schema=base_schema)
+        ids = {f.name: f.field_id for f in evolved.fields}
+        self.assertEqual(ids['id'], base_schema.find_field('id').field_id)
+        self.assertEqual(ids['name'], base_schema.find_field('name').field_id)
+        self.assertEqual(ids['date_col'], base_schema.find_field('date_col').field_id)
+        self.assertGreater(ids['extra'], max(f.field_id for f in base_schema.fields))
+
+    def test_stream_batches_schema_evolution_midstream(self):
+        batch1 = pa.RecordBatch.from_pydict({'id': [1], 'value': ['a']})
+        batch2 = pa.RecordBatch.from_pydict({'id': [2], 'value': ['b'], 'extra': ['x']})
+
+        mock_table = MagicMock()
+        mock_catalog = MagicMock()
+        loader = IcebergLoader(mock_catalog)
+
+        base_schema = loader._convert_arrow_to_iceberg_schema(batch1.schema)
+        evolved_schema = loader._convert_arrow_to_iceberg_schema(batch2.schema, existing_schema=base_schema)
+
+        mock_catalog.load_table.return_value = mock_table
+        mock_table.schema.side_effect = [base_schema, base_schema, evolved_schema, evolved_schema]
+        update_ctx = mock_table.update_schema.return_value.__enter__.return_value
+        txn = mock_table.transaction.return_value.__enter__.return_value
+
+        loader.load_data_batches(
+            batch_iterator=iter([batch1, batch2]),
+            table_identifier=self.table_identifier,
+            write_mode='append',
+            schema_evolution=True,
+        )
+
+        self.assertGreaterEqual(mock_table.update_schema.call_count, 2)
+        self.assertEqual(txn.append.call_count, 2)
+
+    def test_load_data_batches_empty_iterator(self):
+        result = self.loader.load_data_batches(
+            batch_iterator=iter([]), table_identifier=self.table_identifier, write_mode='append'
+        )
+        self.assertEqual(result['rows_loaded'], 0)
+        self.assertEqual(result['batches_processed'], 0)
+
+    def test_overwrite_branch_append_path(self):
+        mock_table = MagicMock()
+        self.mock_catalog.load_table.return_value = mock_table
+        expected_iceberg_schema = self.loader._convert_arrow_to_iceberg_schema(self.arrow_schema)
+        mock_table.schema.return_value = expected_iceberg_schema
+
+        txn = mock_table.transaction.return_value.__enter__.return_value
+        self.loader.load_data(self.arrow_table, self.table_identifier, write_mode='append', replace_filter=None)
+        txn.overwrite.assert_not_called()
+        txn.append.assert_called()
 
 
 if __name__ == '__main__':

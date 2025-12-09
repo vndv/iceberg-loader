@@ -2,7 +2,12 @@ import unittest
 
 import pyarrow as pa
 
-from iceberg_loader.arrow_utils import create_arrow_table_from_data, create_record_batches_from_dicts
+from iceberg_loader.arrow_utils import (
+    convert_column_type,
+    create_arrow_table_from_data,
+    create_record_batches_from_dicts,
+    convert_table_types,
+)
 
 
 class TestArrowUtils(unittest.TestCase):
@@ -48,6 +53,26 @@ class TestArrowUtils(unittest.TestCase):
         batches = list(create_record_batches_from_dicts(iter(data), batch_size=10))
 
         self.assertEqual(len(batches), 0)
+
+    def test_convert_column_type_warns_and_nulls(self):
+        column = pa.array(['a', 'b'])
+        with self.assertLogs('iceberg_loader.arrow_utils', level='WARNING') as cm:
+            converted = convert_column_type(column, pa.int64(), 'bad')
+        self.assertEqual(converted.to_pylist(), [None, None])
+        self.assertTrue(any('bad' in msg for msg in cm.output))
+
+    def test_convert_table_types_missing_column(self):
+        table = pa.Table.from_pydict({'a': [1, 2]})
+        target = pa.schema([pa.field('a', pa.int64()), pa.field('b', pa.string())])
+        converted = convert_table_types(table, target)
+        self.assertEqual(converted.column('b').to_pylist(), [None, None])
+
+    def test_convert_table_types_cast_error_branch(self):
+        table = pa.Table.from_pydict({'a': ['x', 'y']})
+        target = pa.schema([pa.field('a', pa.int64())])
+        with self.assertLogs('iceberg_loader.arrow_utils', level='WARNING'):
+            converted = convert_table_types(table, target)
+        self.assertEqual(converted.column('a').to_pylist(), [None, None])
 
 
 if __name__ == '__main__':

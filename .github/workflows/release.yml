@@ -7,14 +7,37 @@ on:
   workflow_dispatch:
 
 jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+      - name: Install hatch
+        run: pip install hatch
+      - name: Lint
+        run: hatch run lint
+      - name: Type check
+        run: hatch run types:check
+      - name: Test
+        run: hatch run test -- --cov=iceberg_loader --cov=tests --cov-report=xml
+
   build-and-publish:
+    needs: tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.12"
+          cache: "pip"
 
       - name: Install build tools
         run: |
@@ -26,6 +49,16 @@ jobs:
 
       - name: Twine check
         run: twine check dist/*
+
+      - name: Install built artifacts (smoke)
+        run: |
+          python -m venv /tmp/venv
+          . /tmp/venv/bin/activate
+          pip install dist/*.whl
+          python - <<'PY'
+from iceberg_loader import __version__
+print(__version__)
+PY
 
       - name: Publish to TestPyPI (optional)
         if: ${{ secrets.TEST_PYPI_API_TOKEN != '' }}

@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from iceberg_loader.maintenance import SnapshotMaintenance
+from iceberg_loader.maintenance import SnapshotMaintenance, expire_snapshots
 
 
 class FakeSnapshot:
@@ -91,4 +91,34 @@ def test_expire_older_than_ms():
     assert len(remaining) == 2
     ids = {s.snapshot_id for s in remaining}
     assert ids == {2, 3}
+
+
+def test_expire_snapshots_helper():
+    snapshots = [
+        FakeSnapshot(1, 1_000),
+        FakeSnapshot(2, 2_000),
+        FakeSnapshot(3, 3_000),
+    ]
+    table = FakeTable(snapshots)
+
+    expire_snapshots(table, keep_last=1)
+
+    assert len(table.snapshots_list) == 1
+    assert table.snapshots_list[0].snapshot_id == 3
+
+
+def test_no_snapshots():
+    table = FakeTable([])
+    SnapshotMaintenance().expire_snapshots(table, keep_last=1)
+    assert table.snapshots_list == []
+
+
+def test_keep_last_negative_skips():
+    snapshots = [
+        FakeSnapshot(1, 1_000),
+        FakeSnapshot(2, 2_000),
+    ]
+    table = FakeTable(snapshots)
+    SnapshotMaintenance().expire_snapshots(table, keep_last=-1)
+    assert len(table.snapshots_list) == 2
 

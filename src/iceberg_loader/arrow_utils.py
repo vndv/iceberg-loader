@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Iterator
 from functools import partial
 from typing import Any
@@ -7,6 +8,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 
 _json_dumps = partial(json.dumps, ensure_ascii=False, separators=(',', ':'))
+logger = logging.getLogger(__name__)
 
 
 def _get_memory_pool() -> pa.MemoryPool:
@@ -66,14 +68,14 @@ def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
     return pa.Table.from_arrays(arrays, schema=pa.schema(fields))
 
 
-def convert_column_type(column: pa.Array, target_type: pa.DataType) -> pa.Array:
-    """Cast a PyArrow Array to the target type, returning nulls on failure."""
+def convert_column_type(column: pa.Array, target_type: pa.DataType, column_name: str | None = None) -> pa.Array:
     if column.type == target_type:
         return column
 
     try:
         return pc.cast(column, target_type)
     except (ValueError, TypeError, pa.ArrowInvalid):
+        logger.warning('Cast failed for column %s to %s, filling nulls', column_name or '<unknown>', target_type)
         return pa.nulls(len(column), type=target_type, memory_pool=_get_memory_pool())
 
 
@@ -98,7 +100,7 @@ def _convert_table_types_internal(table: pa.Table, target_schema: pa.Schema) -> 
                 new_arrays.append(column)
                 new_fields.append(field)
             else:
-                new_array = convert_column_type(column, field.type)
+                new_array = convert_column_type(column, field.type, field.name)
                 new_arrays.append(new_array)
                 new_fields.append(
                     pa.field(field.name, new_array.type, nullable=field.nullable, metadata=field.metadata)

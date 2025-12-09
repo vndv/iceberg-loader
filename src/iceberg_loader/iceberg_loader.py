@@ -32,18 +32,28 @@ class IcebergLoader:
         if table_properties:
             self.table_properties.update(table_properties)
 
-    def _convert_arrow_to_iceberg_schema(self, arrow_schema: pa.Schema) -> Schema:
-        field_id_counter = count(1)
+    def _convert_arrow_to_iceberg_schema(self, arrow_schema: pa.Schema, existing_schema: Schema | None = None) -> Schema:
+        existing_fields = {field.name: field for field in existing_schema.fields} if existing_schema else {}
+        field_id_counter = count(max((f.field_id for f in existing_fields.values()), default=0) + 1)
         fields = []
 
         for field in arrow_schema:
             iceberg_type = get_iceberg_type(field.type)
-            iceberg_field = NestedField(
-                field_id=next(field_id_counter),
-                name=field.name,
-                field_type=iceberg_type,
-                required=not field.nullable,
-            )
+            if field.name in existing_fields:
+                existing = existing_fields[field.name]
+                iceberg_field = NestedField(
+                    field_id=existing.field_id,
+                    name=field.name,
+                    field_type=iceberg_type,
+                    required=existing.required,
+                )
+            else:
+                iceberg_field = NestedField(
+                    field_id=next(field_id_counter),
+                    name=field.name,
+                    field_type=iceberg_type,
+                    required=not field.nullable,
+                )
             fields.append(iceberg_field)
 
         return Schema(*fields)
@@ -129,7 +139,7 @@ class IcebergLoader:
             # Only check for evolution if we didn't just create the table
             if schema_evolution:
                 logger.info('Checking for schema evolution...')
-                new_schema = self._convert_arrow_to_iceberg_schema(table_data.schema)
+                new_schema = self._convert_arrow_to_iceberg_schema(table_data.schema, existing_schema=table.schema())
                 with table.update_schema() as update:
                     update.union_by_name(new_schema)
                 table.refresh()
@@ -223,7 +233,7 @@ class IcebergLoader:
         if schema_evolution and first_batch is not None and not created_new_table:
             logger.info('Checking for schema evolution based on first batch...')
             temp_table = pa.Table.from_batches([first_batch])
-            new_schema = self._convert_arrow_to_iceberg_schema(temp_table.schema)
+            new_schema = self._convert_arrow_to_iceberg_schema(temp_table.schema, existing_schema=table.schema())
             with table.update_schema() as update:
                 update.union_by_name(new_schema)
             table.refresh()
@@ -246,6 +256,15 @@ class IcebergLoader:
 
             batches_processed = 1
             for batch in batch_iterator:
+                if schema_evolution:
+                    incoming_schema = pa.Table.from_batches([batch]).schema
+                    if set(incoming_schema.names) - set(arrow_schema.names):
+                        new_schema = self._convert_arrow_to_iceberg_schema(incoming_schema, existing_schema=table.schema())
+                        with table.update_schema() as update:
+                            update.union_by_name(new_schema)
+                        table.refresh()
+                        arrow_schema = self._convert_iceberg_schema_to_arrow(table.schema())
+
                 logger.info(
                     'Processing batch %s with size %s. Table: %s',
                     batches_processed,

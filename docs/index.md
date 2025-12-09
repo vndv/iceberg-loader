@@ -10,7 +10,14 @@ Utilities for loading data into Iceberg tables using PyArrow. Handles messy JSON
 
 ## Install
 ```bash
-pip install iceberg-loader
+pip install "iceberg-loader>=0.0.1"
+```
+
+Hive/S3 extras:
+```bash
+pip install "iceberg-loader[hive]"
+pip install "iceberg-loader[s3]"
+pip install "iceberg-loader[all]"
 ```
 
 ## Quickstart
@@ -51,6 +58,14 @@ hatch run python examples/load_example.py
 ```bash
 hatch run lint
 hatch run test
+```
+
+## Maintenance
+```python
+from iceberg_loader import expire_snapshots
+
+table = catalog.load_table(("db", "users"))
+expire_snapshots(table, keep_last=2)
 ```
 
 ## License

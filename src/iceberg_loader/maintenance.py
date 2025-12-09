@@ -74,3 +74,7 @@ class SnapshotMaintenance:
 
         except (IcebergError, OSError, ValueError, RuntimeError) as e:
             logger.warning('Failed to expire snapshots for table %s: %s', table.name(), e)
+
+
+def expire_snapshots(table: Any, keep_last: int = 1, older_than_ms: Optional[int] = None) -> None:
+    SnapshotMaintenance().expire_snapshots(table, keep_last=keep_last, older_than_ms=older_than_ms)
