@@ -4,6 +4,8 @@ Utilities for loading data into Iceberg tables using PyArrow. This library provi
 
 [![PyPI - Version](https://img.shields.io/pypi/v/iceberg-loader.svg)](https://pypi.org/project/iceberg-loader)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/iceberg-loader.svg)](https://pypi.org/project/iceberg-loader)
+[![CI](https://github.com/IvanMatveev/iceberg-loader/actions/workflows/ci.yml/badge.svg)](https://github.com/IvanMatveev/iceberg-loader/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Why iceberg-loader?
 Although **PyIceberg** is the official and powerful library for interacting with Iceberg tables, it relies on **PyArrow** for data type inference and conversion. This strictness can be a bottleneck when dealing with "messy" real-world data, especially raw JSON events.
@@ -20,11 +22,11 @@ Although **PyIceberg** is the official and powerful library for interacting with
 
 ## Features
 
-- **Arrow Integration**: Native support for PyArrow tables and RecordBatches.
-- **Flexible Partitioning**: Partition by any column (identity transform) or use legacy auto-date partitioning.
-- **Schema Evolution**: Automatically updates table schema to match new data (if enabled).
-- **Idempotency**: Prevents duplicate data by handling partition replacements safely (overwrite specific partitions).
-- **Maintenance**: Includes snapshot expiration utilities.
+- **Arrow-first**: Works with `pa.Table`, `RecordBatch`, and Arrow IPC streams.
+- **Messy JSON friendly**: Dicts/lists/mixed types are auto-serialized to JSON strings.
+- **Schema evolution (opt-in)**: Union incoming schema with the table when enabled.
+- **Idempotent writes**: Replace partitions safely with `replace_filter`.
+- **Maintenance helpers**: Snapshot expiration utilities.
 
 ## Installation
 
@@ -167,15 +169,28 @@ twine upload dist/*
 
 ### Examples
 
-See `examples/` directory for full runnable scripts (requires local docker environment).
+See `examples/` directory for runnable scripts (requires local docker environment):
 
 ```bash
-# Start infrastructure
 cd examples && docker-compose up -d
-
-# Run examples
 hatch run python examples/load_example.py
 hatch run python examples/advanced_scenarios.py
+hatch run python examples/load_complex_json.py
+hatch run python examples/load_stream.py
+hatch run python examples/load_from_api.py
+```
+
+## Documentation
+
+Rendered docs (MkDocs) live in `docs/` (serve locally with `mkdocs serve`). The homepage mirrors the README for quick onboarding.
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, coding style, and PR guidelines. Quick checks:
+
+```bash
+hatch run lint
+hatch run test
 ```
 
 ## License

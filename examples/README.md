@@ -81,6 +81,13 @@ hatch run python examples/load_from_api.py
 
 Note: This example uses the Jaffle Shop demo API and loads data into 6 tables (customers, orders, items, products, supplies, stores).
 
+### 6. Snapshot Maintenance (`maintenance_example.py`)
+Expire old snapshots in a table (keep last N or older_than_ms):
+
+```bash
+hatch run python examples/maintenance_example.py
+```
+
 ## Cleanup
 
 To stop and remove the local infrastructure:

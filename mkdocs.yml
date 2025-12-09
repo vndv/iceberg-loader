@@ -1,0 +1,12 @@
+site_name: iceberg-loader
+site_description: Utilities for robust data loading into Apache Iceberg using PyArrow
+repo_url: https://github.com/IvanMatveev/iceberg-loader
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: blue
+    accent: light blue
+nav:
+  - Home: index.md
+
