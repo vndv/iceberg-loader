@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from iceberg_loader.maintenance import SnapshotMaintenance, expire_snapshots
 
@@ -67,7 +67,7 @@ def test_expire_keep_last_one():
 
 
 def test_expire_older_than_ms():
-    now_ms = int(datetime.now(UTC).timestamp() * 1000)
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     old = now_ms - 10_000
     mid = now_ms - 5_000
     new = now_ms
