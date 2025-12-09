@@ -3,10 +3,10 @@ from datetime import datetime
 from typing import Any
 
 try:
-    from pyiceberg.exceptions import IcebergError
+    from pyiceberg.exceptions import CommitFailedException as IcebergError
 except ImportError:  # pragma: no cover - fallback for environments without pyiceberg
 
-    class IcebergError(Exception):  # type: ignore[override]
+    class IcebergError(Exception):  # type: ignore[no-redef]
         """Fallback when pyiceberg is not installed."""
 
 

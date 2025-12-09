@@ -100,7 +100,7 @@ class IcebergLoader:
         is_first_write = True
         new_table_created = False
 
-        def process_buffer(batches: list[pa.RecordBatch]):
+        def process_buffer(batches: list[pa.RecordBatch]) -> None:
             nonlocal table, new_table_created, is_first_write, total_rows
 
             if not batches:

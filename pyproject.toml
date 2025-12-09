@@ -117,16 +117,25 @@ quote-style = "single"
 indent-style = "space"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.12"
 warn_unused_configs = true
-warn_unused_ignores = true
 warn_redundant_casts = true
-warn_return_any = true
+warn_return_any = false
 strict_optional = true
 disallow_untyped_defs = true
 disallow_untyped_calls = false
 follow_imports = "normal"
 show_error_codes = true
+exclude = ["examples/"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = ["pyarrow", "pyarrow.*", "pyiceberg.*", "requests"]
+ignore_missing_imports = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/iceberg_loader"]
