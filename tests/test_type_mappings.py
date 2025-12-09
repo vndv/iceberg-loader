@@ -1,8 +1,9 @@
 import unittest
 
 import pyarrow as pa
-from iceberg_loader.type_mappings import get_arrow_type, get_iceberg_type, register_custom_mapping
 from pyiceberg.types import IntegerType, LongType, StringType, TimestampType, TimestamptzType
+
+from iceberg_loader.type_mappings import get_arrow_type, get_iceberg_type, register_custom_mapping
 
 
 class TestTypeMappings(unittest.TestCase):

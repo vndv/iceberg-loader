@@ -3,8 +3,9 @@ import unittest
 from unittest.mock import MagicMock
 
 import pyarrow as pa
-from iceberg_loader import IcebergLoader
 from pyiceberg.exceptions import NoSuchTableError
+
+from iceberg_loader import IcebergLoader
 
 
 class TestStreaming(unittest.TestCase):
