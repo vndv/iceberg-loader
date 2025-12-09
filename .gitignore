@@ -104,4 +104,16 @@ site/
 # Hatch env cache
 *.hatch_env_cache
 .cursor/
+uv.lock
 
+# Pytest
+.pytest_cache/
+
+# Coverage
+coverage.xml
+
+# Ruff
+.ruff_cache/
+
+# Mypy
+.mypy_cache/

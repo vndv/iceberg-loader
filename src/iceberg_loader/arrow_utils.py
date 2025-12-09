@@ -52,13 +52,13 @@ def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
     pool = _get_memory_pool()
 
     for key in all_keys:
-        column_values = []
+        column_values: list[str | None] = []
         for item in data:
             value = item.get(key)
-            if isinstance(value, (dict, list)):
+            if isinstance(value, dict | list):
                 column_values.append(_json_dumps(value))
             else:
-                column_values.append(value)
+                column_values.append(str(value) if value is not None else None)
 
         try:
             array = pa.array(column_values, memory_pool=pool)

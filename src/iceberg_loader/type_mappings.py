@@ -16,10 +16,10 @@ from pyiceberg.types import (
 
 
 class TypeRegistry:
-    def __init__(self):
+    def __init__(self) -> None:
         self._arrow_to_iceberg = self._build_arrow_to_iceberg()
         self._iceberg_to_arrow = self._build_iceberg_to_arrow()
-        self._custom_mappings = {}
+        self._custom_mappings: dict[pa.DataType, IcebergType] = {}
 
     def _build_arrow_to_iceberg(self) -> dict[pa.DataType, IcebergType]:
         return {
@@ -53,7 +53,7 @@ class TypeRegistry:
             TimestamptzType: pa.timestamp('us', tz='UTC'),
         }
 
-    def register_custom_mapping(self, arrow_type: pa.DataType, iceberg_type: IcebergType):
+    def register_custom_mapping(self, arrow_type: pa.DataType, iceberg_type: IcebergType) -> None:
         self._custom_mappings[arrow_type] = iceberg_type
 
     def get_iceberg_type(self, arrow_type: pa.DataType) -> IcebergType:
@@ -109,5 +109,5 @@ def get_arrow_type(iceberg_type_instance: IcebergType) -> pa.DataType:
     return _type_registry.get_arrow_type(iceberg_type_instance)
 
 
-def register_custom_mapping(arrow_type: pa.DataType, iceberg_type: IcebergType):
-    return _type_registry.register_custom_mapping(arrow_type, iceberg_type)
+def register_custom_mapping(arrow_type: pa.DataType, iceberg_type: IcebergType) -> None:
+    _type_registry.register_custom_mapping(arrow_type, iceberg_type)
