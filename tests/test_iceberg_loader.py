@@ -35,6 +35,8 @@ class TestIcebergLoader(unittest.TestCase):
     def test_load_data_create_table(self):
         mock_table = MagicMock()
         self.mock_catalog.load_table.side_effect = [NoSuchTableError, mock_table]
+        expected_iceberg_schema = self.loader._convert_arrow_to_iceberg_schema(self.arrow_schema)
+        mock_table.schema.return_value = expected_iceberg_schema
 
         result = self.loader.load_data(self.arrow_table, self.table_identifier, partition_col='date_col')
 
@@ -45,7 +47,10 @@ class TestIcebergLoader(unittest.TestCase):
     def test_load_data_append_existing(self):
         mock_table = MagicMock()
         self.mock_catalog.load_table.return_value = mock_table
-        mock_table.schema.return_value.fields = []
+        # Return a valid Iceberg schema that matches arrow_table
+        # Use the internal helper to generate it from the arrow schema for convenience
+        expected_iceberg_schema = self.loader._convert_arrow_to_iceberg_schema(self.arrow_schema)
+        mock_table.schema.return_value = expected_iceberg_schema
 
         self.loader.load_data(self.arrow_table, self.table_identifier, write_mode='append')
 
@@ -56,6 +61,9 @@ class TestIcebergLoader(unittest.TestCase):
     def test_load_data_overwrite_existing(self):
         mock_table = MagicMock()
         self.mock_catalog.load_table.return_value = mock_table
+        # Return a valid Iceberg schema that matches arrow_table
+        expected_iceberg_schema = self.loader._convert_arrow_to_iceberg_schema(self.arrow_schema)
+        mock_table.schema.return_value = expected_iceberg_schema
 
         self.loader.load_data(self.arrow_table, self.table_identifier, write_mode='overwrite')
 

@@ -14,6 +14,16 @@ def _get_memory_pool() -> pa.MemoryPool:
 
 
 def create_arrow_table_from_data(data: list[dict[str, Any]]) -> pa.Table:
+    """
+    Creates a PyArrow Table from a list of dictionaries, handling complex types
+    by serializing them to JSON strings if necessary.
+
+    Args:
+        data: A list of dictionaries representing the rows of the table.
+
+    Returns:
+        A PyArrow Table.
+    """
     if not data:
         return pa.Table.from_arrays([], schema=pa.schema([]))
 
@@ -57,18 +67,18 @@ def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
 
 
 def convert_column_type(column: pa.Array, target_type: pa.DataType) -> pa.Array:
+    """Cast a PyArrow Array to the target type, returning nulls on failure."""
     if column.type == target_type:
         return column
 
     try:
         return pc.cast(column, target_type)
     except (ValueError, TypeError, pa.ArrowInvalid):
-        if pa.types.is_null(column.type):
-            return pa.nulls(len(column), type=target_type, memory_pool=_get_memory_pool())
         return pa.nulls(len(column), type=target_type, memory_pool=_get_memory_pool())
 
 
 def convert_table_types(table: pa.Table, target_schema: pa.Schema) -> pa.Table:
+    """Convert PyArrow Table to match target schema, casting types and adding missing columns."""
     if table.schema.equals(target_schema):
         return table
 
@@ -104,6 +114,7 @@ def _convert_table_types_internal(table: pa.Table, target_schema: pa.Schema) -> 
 def create_record_batches_from_dicts(
     data_iterator: Iterator[dict[str, Any]], batch_size: int = 10000
 ) -> Iterator[pa.RecordBatch]:
+    """Convert iterator of dicts to PyArrow RecordBatches with specified batch size."""
     batch = []
 
     for item in data_iterator:
@@ -111,9 +122,13 @@ def create_record_batches_from_dicts(
 
         if len(batch) >= batch_size:
             table = create_arrow_table_from_data(batch)
-            yield table.to_batches(max_chunksize=batch_size)[0]
+            batches = table.to_batches(max_chunksize=batch_size)
+            if batches:
+                yield batches[0]
             batch = []
 
     if batch:
         table = create_arrow_table_from_data(batch)
-        yield table.to_batches(max_chunksize=len(batch))[0]
+        batches = table.to_batches(max_chunksize=len(batch))
+        if batches:
+            yield batches[0]

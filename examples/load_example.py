@@ -1,43 +1,14 @@
 import logging
 
-from pyiceberg.catalog.hive import HiveCatalog
+from catalog import get_catalog
 
 from iceberg_loader import load_data_to_iceberg
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
-
-
-# 1. Connect to Hive Catalog (using local MinIO/Hive from docker-compose)
-def get_catalog():
-    s3_properties = {
-        's3.endpoint': 'http://localhost:9000',
-        's3.access-key-id': 'minio',
-        's3.secret-access-key': 'minio123',
-        's3.path-style-access': 'true',
-        's3.region': 'us-east-1',
-        # Force using FsspecFileIO (s3fs) instead of PyArrowFileIO to avoid 411 errors with MinIO
-        'py-io-impl': 'pyiceberg.io.fsspec.FsspecFileIO',
-    }
-
-    # Initialize s3fs to ensure bucket exists
-    try:
-        import s3fs
-
-        fs = s3fs.S3FileSystem(client_kwargs={'endpoint_url': 'http://localhost:9000'}, key='minio', secret='minio123')
-        if not fs.exists('datalake'):
-            fs.mkdir('datalake')
-            logger.info("Created bucket 'datalake'")
-    except Exception as e:
-        logger.warning('Could not check/create bucket: %s', e)
-
-    # Using HiveCatalog as shown in your example, but adapted for local docker
-    return HiveCatalog(
-        name='default',
-        uri='thrift://localhost:9083',
-        warehouse='s3://datalake/warehouse',
-        **s3_properties,
-    )
 
 
 def run_example():

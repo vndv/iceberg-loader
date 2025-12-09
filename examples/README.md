@@ -18,6 +18,15 @@ The examples require a running MinIO (S3-compatible storage) and Hive Metastore.
 2. **Install dependencies:**
    Ensure you have the project dependencies installed. If using `hatch`, this is handled automatically.
 
+## Shared Modules
+
+The examples use shared modules for common functionality:
+- **`catalog.py`**: Iceberg catalog configuration (connects to local Hive Metastore)
+- **`settings.py`**: Configuration with defaults for local MinIO/Hive setup
+- **`rest_adapter.py`**: REST API client for fetching external data
+
+All examples import these modules to avoid code duplication.
+
 ## Running Examples
 
 You can run the examples using `hatch` from the project root.
@@ -56,6 +65,21 @@ Demonstrates loading data from an Apache Arrow IPC stream source.
 ```bash
 hatch run python examples/load_stream.py
 ```
+
+### 5. REST API Integration (`load_from_api.py`)
+Real-world example that loads data from a REST API into Iceberg tables.
+
+Features:
+- REST API data fetching with error handling (using `rest_adapter.py`)
+- Structured logging for production monitoring
+- Schema evolution for API changes
+- Batch processing of multiple endpoints
+
+```bash
+hatch run python examples/load_from_api.py
+```
+
+Note: This example uses the Jaffle Shop demo API and loads data into 6 tables (customers, orders, items, products, supplies, stores).
 
 ## Cleanup
 

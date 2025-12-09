@@ -19,6 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 class IcebergLoader:
+    """
+    Loader for Apache Iceberg tables with support for complex JSON data.
+    
+    Handles schema inference, type conversion, partitioning, and various write modes
+    (overwrite, append, idempotent). Automatically serializes complex types to JSON strings.
+    """
+
     def __init__(self, catalog: Catalog, table_properties: dict[str, Any] | None = None):
         self.catalog = catalog
         self.table_properties = TABLE_PROPERTIES.copy()
@@ -53,11 +60,12 @@ class IcebergLoader:
             try:
                 field = schema.find_field(partition_col)
                 max_field_id = max(f.field_id for f in schema.fields)
+                partition_field_id = max_field_id + 1
 
                 partition_spec = PartitionSpec(
                     PartitionField(
                         source_id=field.field_id,
-                        field_id=max_field_id + 1,
+                        field_id=partition_field_id,
                         transform=IdentityTransform(),
                         name=f'{partition_col}_partition',
                     ),
@@ -99,18 +107,26 @@ class IcebergLoader:
         table_data: pa.Table,
         table_identifier: tuple[str, str],
         write_mode: Literal['overwrite', 'append'] = 'overwrite',
-        # New flexible parameters
         partition_col: str | None = None,
         replace_filter: str | None = None,
         schema_evolution: bool = False,
     ) -> dict[str, Any]:
+        """
+        Load PyArrow Table into Iceberg table with automatic schema handling.
+        
+        Creates table if it doesn't exist, converts types to match Iceberg schema,
+        and supports overwrite/append modes with optional idempotent writes.
+        """
         table = self._load_table_if_exists(table_identifier)
+        created_new_table = False
 
         if table is None:
             schema = self._convert_arrow_to_iceberg_schema(table_data.schema)
             self._create_iceberg_table(table_identifier, schema, partition_col=partition_col)
             table = self.catalog.load_table(table_identifier)
+            created_new_table = True
         else:
+            # Only check for evolution if we didn't just create the table
             if schema_evolution:
                 logger.info('Checking for schema evolution...')
                 new_schema = self._convert_arrow_to_iceberg_schema(table_data.schema)
@@ -118,10 +134,9 @@ class IcebergLoader:
                     update.union_by_name(new_schema)
                 table.refresh()
 
-            iceberg_schema = table.schema()
-
-            arrow_schema = self._convert_iceberg_schema_to_arrow(iceberg_schema)
-            table_data = convert_table_types(table_data, arrow_schema)
+        iceberg_schema = table.schema()
+        arrow_schema = self._convert_iceberg_schema_to_arrow(iceberg_schema)
+        table_data = convert_table_types(table_data, arrow_schema)
 
         with table.transaction() as txn:
             if write_mode == 'overwrite':
@@ -141,6 +156,7 @@ class IcebergLoader:
             'partition_col': partition_col if partition_col else 'none',
             'table_location': table.location(),
             'snapshot_id': table.current_snapshot().snapshot_id if table.current_snapshot() else 'none',
+            'new_table_created': created_new_table,
         }
 
     def load_ipc_stream(
@@ -174,10 +190,17 @@ class IcebergLoader:
         replace_filter: str | None = None,
         schema_evolution: bool = False,
     ) -> dict[str, Any]:
+        """
+        Load data from RecordBatch iterator/reader into Iceberg table.
+        
+        Efficiently processes streaming data in batches, creating table if needed
+        and handling schema evolution. Supports overwrite/append with idempotent writes.
+        """
         total_rows = 0
         first_batch = None
 
         table = self._load_table_if_exists(table_identifier)
+        created_new_table = False
 
         try:
             first_batch = next(batch_iterator)
@@ -194,8 +217,10 @@ class IcebergLoader:
             schema = self._convert_arrow_to_iceberg_schema(temp_table.schema)
             self._create_iceberg_table(table_identifier, schema, partition_col=partition_col)
             table = self.catalog.load_table(table_identifier)
+            created_new_table = True
 
-        if schema_evolution and first_batch is not None:
+        # Optimization: Don't evolve if just created
+        if schema_evolution and first_batch is not None and not created_new_table:
             logger.info('Checking for schema evolution based on first batch...')
             temp_table = pa.Table.from_batches([first_batch])
             new_schema = self._convert_arrow_to_iceberg_schema(temp_table.schema)
@@ -221,7 +246,12 @@ class IcebergLoader:
 
             batches_processed = 1
             for batch in batch_iterator:
-                logger.info('Processing batch %s with size %s', batches_processed, len(batch))
+                logger.info(
+                    'Processing batch %s with size %s. Table: %s',
+                    batches_processed,
+                    len(batch),
+                    table_identifier,
+                )
 
                 batch_table = pa.Table.from_batches([batch])
                 batch_table = convert_table_types(batch_table, arrow_schema)
@@ -255,6 +285,7 @@ def load_data_to_iceberg(
     schema_evolution: bool = False,
     table_properties: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Public API wrapper for loading PyArrow Table into Iceberg table."""
     loader = IcebergLoader(catalog, table_properties)
     return loader.load_data(table_data, table_identifier, write_mode, partition_col, replace_filter, schema_evolution)
 
@@ -270,6 +301,7 @@ def load_batches_to_iceberg(
     schema_evolution: bool = False,
     table_properties: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Public API wrapper for loading RecordBatch iterator/reader into Iceberg table."""
     loader = IcebergLoader(catalog, table_properties)
     return loader.load_data_batches(
         batch_iterator, table_identifier, write_mode, partition_col, replace_filter, schema_evolution
@@ -286,6 +318,7 @@ def load_ipc_stream_to_iceberg(
     schema_evolution: bool = False,
     table_properties: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Public API wrapper for loading Apache Arrow IPC stream into Iceberg table."""
     loader = IcebergLoader(catalog, table_properties)
     return loader.load_ipc_stream(
         stream_source, table_identifier, write_mode, partition_col, replace_filter, schema_evolution

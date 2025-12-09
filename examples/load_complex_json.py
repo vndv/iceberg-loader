@@ -1,31 +1,16 @@
 import json
 import logging
 
-from pyiceberg.catalog.hive import HiveCatalog
+from catalog import get_catalog
 
 from iceberg_loader import load_data_to_iceberg
 from iceberg_loader.arrow_utils import create_arrow_table_from_data
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
-
-
-def get_catalog():
-    s3_properties = {
-        's3.endpoint': 'http://localhost:9000',
-        's3.access-key-id': 'minio',
-        's3.secret-access-key': 'minio123',
-        's3.path-style-access': 'true',
-        's3.region': 'us-east-1',
-        'py-io-impl': 'pyiceberg.io.fsspec.FsspecFileIO',
-    }
-
-    return HiveCatalog(
-        name='default',
-        uri='thrift://localhost:9083',
-        warehouse='s3://datalake/warehouse',
-        **s3_properties,
-    )
 
 
 def drop_if_exists(catalog, table_id):

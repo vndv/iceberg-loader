@@ -23,12 +23,13 @@ class TestStreaming(unittest.TestCase):
 
         mock_table = MagicMock()
         mock_txn = mock_table.transaction.return_value.__enter__.return_value
-        mock_table.schema.return_value = schema
 
         mock_catalog = MagicMock()
         mock_catalog.load_table.side_effect = [NoSuchTableError, mock_table]
 
         loader = IcebergLoader(mock_catalog)
+        expected_iceberg_schema = loader._convert_arrow_to_iceberg_schema(schema)
+        mock_table.schema.return_value = expected_iceberg_schema
         result = loader.load_ipc_stream(
             stream_source=sink,
             table_identifier=('default', 'streaming_test'),
