@@ -56,9 +56,9 @@ jobs:
           . /tmp/venv/bin/activate
           pip install dist/*.whl
           python - <<'PY'
-from iceberg_loader import __version__
-print(__version__)
-PY
+          from iceberg_loader import __version__
+          print(__version__)
+          PY
 
       - name: Publish to TestPyPI (optional)
         if: ${{ secrets.TEST_PYPI_API_TOKEN != '' }}
