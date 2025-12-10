@@ -3,9 +3,10 @@ from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pyarrow as pa
+from pyiceberg.exceptions import NoSuchTableError
+
 from iceberg_loader.iceberg_loader import IcebergLoader, load_data_to_iceberg
 from iceberg_loader.settings import TABLE_PROPERTIES
-from pyiceberg.exceptions import NoSuchTableError
 
 
 class TestIcebergLoader(unittest.TestCase):

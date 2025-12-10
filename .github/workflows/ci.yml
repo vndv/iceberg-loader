@@ -10,7 +10,22 @@ on:
     - cron: '0 0 * * 1'
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+      - name: Install hatch
+        run: pip install hatch
+      - name: Lint
+        run: hatch run lint
+
   build:
+    needs: lint
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -24,8 +39,6 @@ jobs:
           cache: "pip"
       - name: Install hatch
         run: pip install hatch
-      - name: Lint
-        run: hatch run lint
       - name: Type check
         run: hatch run types:check
       - name: Test

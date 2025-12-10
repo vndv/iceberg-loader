@@ -108,7 +108,7 @@ exclude_lines = [
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py313"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "N", "TID"]

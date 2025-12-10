@@ -1,6 +1,7 @@
 import unittest
 
 import pyarrow as pa
+
 from iceberg_loader.arrow_utils import (
     convert_column_type,
     convert_table_types,

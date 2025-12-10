@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import MagicMock
 
 import pyarrow as pa
-from iceberg_loader.schema import SchemaManager
 from pyiceberg.partitioning import PartitionSpec
 from pyiceberg.transforms import (
     BucketTransform,
@@ -12,6 +11,8 @@ from pyiceberg.transforms import (
     TruncateTransform,
     YearTransform,
 )
+
+from iceberg_loader.schema import SchemaManager
 
 
 class TestSchemaManagerPartitioning(unittest.TestCase):
