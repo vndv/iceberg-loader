@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LoaderConfig:
+    """Defaults for IcebergLoader operations."""
+
     write_mode: Literal['overwrite', 'append', 'upsert'] = 'overwrite'
     partition_col: str | None = None
     replace_filter: str | None = None
@@ -275,6 +277,7 @@ def load_data_to_iceberg(
     join_cols: list[str] | None = None,
     config: LoaderConfig | None = None,
 ) -> dict[str, Any]:
+    """Public wrapper around IcebergLoader.load_data using an optional LoaderConfig."""
     loader = IcebergLoader(catalog, table_properties, default_config=config)
     return loader.load_data(
         table_data,
@@ -302,6 +305,7 @@ def load_batches_to_iceberg(
     join_cols: list[str] | None = None,
     config: LoaderConfig | None = None,
 ) -> dict[str, Any]:
+    """Public wrapper around IcebergLoader.load_data_batches using an optional LoaderConfig."""
     loader = IcebergLoader(catalog, table_properties, default_config=config)
     return loader.load_data_batches(
         batch_iterator,
@@ -330,6 +334,7 @@ def load_ipc_stream_to_iceberg(
     join_cols: list[str] | None = None,
     config: LoaderConfig | None = None,
 ) -> dict[str, Any]:
+    """Public wrapper around IcebergLoader.load_ipc_stream using an optional LoaderConfig."""
     loader = IcebergLoader(catalog, table_properties, default_config=config)
     return loader.load_ipc_stream(
         stream_source,

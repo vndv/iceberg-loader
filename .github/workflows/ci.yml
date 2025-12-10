@@ -26,8 +26,23 @@ jobs:
       - name: Lint (Ruff, config from pyproject.toml)
         run: ruff check --output-format=github .
 
-  build:
+  types:
     needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install hatch
+        run: pip install hatch
+      - name: Type check
+        run: hatch run types:check
+
+  tests:
+    needs: [lint]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -41,8 +56,6 @@ jobs:
           cache: "pip"
       - name: Install hatch
         run: pip install hatch
-      - name: Type check
-        run: hatch run types:check
       - name: Test
         run: hatch run test -- --cov=iceberg_loader --cov=tests --cov-report=xml --junitxml=pytest-report.xml
       - name: Upload coverage report
@@ -56,5 +69,26 @@ jobs:
         with:
           name: pytest-report-${{ matrix.python-version }}
           path: pytest-report.xml
+          if-no-files-found: error
+
+  build:
+    needs: [lint, types, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install hatch
+        run: pip install hatch
+      - name: Build artifacts
+        run: hatch build
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
           if-no-files-found: error
 

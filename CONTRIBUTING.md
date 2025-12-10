@@ -17,7 +17,7 @@ Thank you for your interest in contributing to the project! This guide will help
    pip install hatch
    ```
    
-   **Note**: This project requires Python 3.10-3.12. If you encounter installation issues:
+   **Note**: This project requires Python 3.10-3.14. If you encounter installation issues:
    - Verify your Python version: `python --version`
    - Use Python 3.12 for best compatibility
    - `uv` may require explicit Python version: `uv venv --python 3.12`

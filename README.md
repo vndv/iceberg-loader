@@ -1,6 +1,6 @@
 # iceberg-loader
 
-Utilities for loading data into Iceberg tables using PyArrow. This library provides a robust way to handle data ingestion into Iceberg tables with features like schema evolution, idempotent writes, and automatic partitioning.
+Utilities for loading data into Iceberg tables using PyArrow. Focus on robust ingestion (messy JSON, schema evolution, idempotent loads, upsert) with a simple facade and configurable defaults.
 
 [![PyPI - Version](https://img.shields.io/pypi/v/iceberg-loader.svg)](https://pypi.org/project/iceberg-loader)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/iceberg-loader.svg)](https://pypi.org/project/iceberg-loader)
@@ -10,90 +10,40 @@ Utilities for loading data into Iceberg tables using PyArrow. This library provi
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Why iceberg-loader?
-Although **PyIceberg** is the official and powerful library for interacting with Iceberg tables, it relies on **PyArrow** for data type inference and conversion. This strictness can be a bottleneck when dealing with "messy" real-world data, especially raw JSON events.
-
-**Key limitations of using raw PyIceberg/PyArrow for ingestion:**
-1.  **Complex/Nested Structures:** PyArrow's schema inference for deep nested structures can be fragile.
-2.  **Inconsistent Data Types:** If a field is a `Struct` in one row and a `List` in another (common in loosely structured JSON), PyArrow will crash with a `ArrowInvalid` or `ArrowTypeError`.
-3.  **Strict Schema:** Writing data often requires the input Arrow table to strictly match the Iceberg table schema, or requires complex setup for schema evolution.
-
-**How `iceberg-loader` solves this:**
-*   **Automatic Sanitization:** It detects complex nested structures (dicts, lists) or inconsistent types and automatically serializes them into valid JSON strings.
-*   **Robustness:** Ensures that data loading continues even if incoming data types fluctuate, effectively treating complex fields as semi-structured data (`StringType`).
-*   **Simplified Schema Evolution:** Handles the boilerplate of checking and updating the Iceberg table schema to match new incoming flat fields.
+- Handles messy JSON: auto-serializes dict/list/mixed fields to strings so writes don’t fail.
+- Schema evolution: add columns on the fly (opt-in), preserves field ids.
+- Safe writes: append/overwrite, idempotent replace via `replace_filter`, upsert.
+- Stream friendly: commit intervals, batches, IPC streams.
+- One config (`LoaderConfig`) to set defaults; override per-call if needed.
 
 ## Features
+- Arrow-first: `pa.Table`, `RecordBatch`, IPC.
+- Messy JSON friendly: dict/list/mixed -> JSON strings.
+- Schema evolution (opt-in).
+- Idempotent replace (`replace_filter`) and upsert.
+- Commit interval for long streams.
+- Maintenance helpers (expire snapshots).
 
-- **Arrow-first**: Works with `pa.Table`, `RecordBatch`, and Arrow IPC streams.
-- **Messy JSON friendly**: Dicts/lists/mixed types are auto-serialized to JSON strings.
-- **Schema evolution (opt-in)**: Union incoming schema with the table when enabled.
-- **Idempotent writes**: Replace partitions safely with `replace_filter`.
-- **Upsert (Merge Into)**: Update existing rows and insert new ones using `upsert` mode.
-- **Maintenance helpers**: Snapshot expiration utilities.
-
-## Installation
-
-```console
-# When published to PyPI:
-pip install "iceberg-loader>=0.0.1"
-```
-
-For Hive/S3 backends install with extras (PyPI target):
-```console
-pip install "iceberg-loader[hive]"
-pip install "iceberg-loader[s3]"
+## Quickstart
+```bash
 pip install "iceberg-loader[all]"
 ```
+```python
+import pyarrow as pa
+from pyiceberg.catalog import load_catalog
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
 
-Test build (TestPyPI) with dependencies from PyPI:
-```bash
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple "iceberg-loader[all]==0.0.1"
+catalog = load_catalog("default")
+data = pa.Table.from_pydict({"id": [1, 2], "signup_date": ["2023-01-01", "2023-01-02"]})
+
+config = LoaderConfig(write_mode="append", partition_col="signup_date", schema_evolution=True)
+load_data_to_iceberg(data, ("db", "users"), catalog, config=config)
 ```
 
-**Important**: Requires Python 3.10, 3.11, or 3.12 (3.12 recommended). Python 3.13+ is not yet supported due to PyArrow compatibility.
-
-### Quick setup with uv
-
-```bash
-# Create virtual environment with Python 3.12
-uv venv --python 3.12 .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install from PyPI
-uv pip install "iceberg-loader[all]"
-
-# Or install from TestPyPI
-uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "iceberg-loader[all]==0.0.1"
-```
-
-**Troubleshooting `uv` installation issues**:
-
-If `uv pip install` fails, common causes are:
-
-1. **Python version incompatibility**: You're using Python 3.13+ or 3.9-
-   ```bash
-   python --version  # Should be 3.10, 3.11, or 3.12
-   uv venv --python 3.12  # Force specific version
-   ```
-
-2. **Missing extras syntax**: `uv` may have issues with complex extras like `[hive,s3fs]`
-   ```bash
-   # Try installing dependencies separately
-   uv pip install "iceberg-loader"
-   uv pip install "pyiceberg[hive,s3fs]"
-   ```
-
-3. **Index issues with TestPyPI**: Ensure both indexes are specified
-   ```bash
-   uv pip install --index-url https://test.pypi.org/simple/ \
-     --extra-index-url https://pypi.org/simple/ \
-     "iceberg-loader[all]"
-   ```
-
-4. **Fallback to pip**: `uv` is still evolving, `pip` is always reliable
-   ```bash
-   pip install "iceberg-loader[all]"
-   ```
+## Compatibility
+- Python: 3.10, 3.11, 3.12, 3.13, 3.14
+- PyArrow: >= 18.0.0
+- PyIceberg: >= 0.7.1 (use extras `hive`, `s3fs`, `pyiceberg-core` as needed)
 
 ## Usage
 
@@ -102,7 +52,7 @@ If `uv pip install` fails, common causes are:
 ```python
 import pyarrow as pa
 from pyiceberg.catalog import load_catalog
-from iceberg_loader import load_data_to_iceberg
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
 
 # 1. Connect to your catalog
 catalog = load_catalog("default")
@@ -116,14 +66,12 @@ data = pa.Table.from_pydict({
 })
 
 # 3. Load data
+config = LoaderConfig(write_mode="append", partition_col="signup_date", schema_evolution=True)
 result = load_data_to_iceberg(
     table_data=data,
     table_identifier=("my_db", "my_table"),
     catalog=catalog,
-    write_mode="append",
-    # Partitioning options:
-    partition_col="signup_date",  # Partition by this column
-    schema_evolution=True         # Allow adding new columns if they appear
+    config=config,
 )
 
 print(result)
@@ -135,14 +83,13 @@ print(result)
 To safely re-load data for a specific day (avoiding duplicates):
 
 ```python
-load_data_to_iceberg(
-    table_data=data,
-    table_identifier=("my_db", "my_table"),
-    catalog=catalog,
-    write_mode="append", # Use append, but...
-    replace_filter="signup_date == '2023-01-01'", # ...delete existing rows for this date first!
-    partition_col="signup_date"
+config = LoaderConfig(
+    write_mode="append",
+    replace_filter="signup_date == '2023-01-01'",
+    partition_col="signup_date",
 )
+
+load_data_to_iceberg(table_data=data, table_identifier=("my_db", "my_table"), catalog=catalog, config=config)
 ```
 
 ### Upsert (Merge Into)
@@ -150,13 +97,8 @@ load_data_to_iceberg(
 Perform a merge operation (update existing rows, insert new ones) based on key columns. Requires PyIceberg >= 0.7.0.
 
 ```python
-load_data_to_iceberg(
-    table_data=data,
-    table_identifier=("my_db", "my_table"),
-    catalog=catalog,
-    write_mode="upsert",
-    join_cols=["id"]  # Rows with matching "id" will be updated, others inserted
-)
+config = LoaderConfig(write_mode="upsert", join_cols=["id"])
+load_data_to_iceberg(table_data=data, table_identifier=("my_db", "my_table"), catalog=catalog, config=config)
 ```
 
 ### Batch Loading
@@ -173,8 +115,7 @@ result = load_batches_to_iceberg(
     batch_iterator=batch_generator(),
     table_identifier=("my_db", "large_table"),
     catalog=catalog,
-    # Optional: Commit every N batches to save memory on huge streams
-    commit_interval=100 
+    config=LoaderConfig(write_mode="append", commit_interval=100),
 )
 ```
 
@@ -188,7 +129,8 @@ from iceberg_loader import load_ipc_stream_to_iceberg
 result = load_ipc_stream_to_iceberg(
     stream_source="data.arrow",
     table_identifier=("my_db", "stream_table"),
-    catalog=catalog
+    catalog=catalog,
+    config=LoaderConfig(write_mode="append"),
 )
 ```
 
@@ -199,13 +141,11 @@ You can override default table properties:
 ```python
 custom_props = {
     'write.parquet.compression-codec': 'snappy',
-    'history.expire.min-snapshots-to-keep': 5
+    'history.expire.min-snapshots-to-keep': 5,
 }
 
-load_data_to_iceberg(
-    ...,
-    table_properties=custom_props
-)
+config = LoaderConfig(table_properties=custom_props, write_mode="append")
+load_data_to_iceberg(..., config=config)
 ```
 
 ### Maintenance helper
