@@ -1,23 +1,33 @@
 import json
 import logging
+from importlib import import_module
+from pathlib import Path
+import sys
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BASE_DIR / 'src'))
+sys.path.insert(0, str(BASE_DIR / 'examples'))
 
 from catalog import get_catalog
-from iceberg_loader import LoaderConfig, load_data_to_iceberg
-from iceberg_loader.arrow_utils import create_arrow_table_from_data
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 def drop_if_exists(catalog, table_id):
+    no_such_table_error = import_module('pyiceberg.exceptions').NoSuchTableError
     try:
         catalog.drop_table(table_id)
         logger.info('Dropped existing table %s', table_id)
-    except Exception:
-        pass
+    except no_such_table_error:
+        return
 
 
 def run_complex_load():
+    loader_mod = import_module('iceberg_loader')
+    LoaderConfig = loader_mod.LoaderConfig
+    load_data_to_iceberg = loader_mod.load_data_to_iceberg
+    create_arrow_table_from_data = import_module('iceberg_loader.arrow_utils').create_arrow_table_from_data
     catalog = get_catalog()
     table_id = ('default', 'complex_json_test')
     # drop_if_exists(catalog, table_id)
@@ -51,13 +61,13 @@ def run_complex_load():
     result_data = result_arrow.to_pylist()
 
     for row in result_data:
-        logger.info(f'Row: {row}')
+        logger.info('Row: %s', row)
         # Check if complex_field is a string
         val = row['complex_field']
         if isinstance(val, str):
-            logger.info(f'  -> complex_field is STRING as expected. Parsed: {json.loads(val)}')
+            logger.info('  -> complex_field is STRING as expected. Parsed: %s', json.loads(val))
         else:
-            logger.error(f'  -> complex_field is NOT a string! Type: {type(val)}')
+            logger.error('  -> complex_field is NOT a string! Type: %s', type(val))
 
 
 if __name__ == '__main__':

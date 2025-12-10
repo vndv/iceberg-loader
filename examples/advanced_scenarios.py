@@ -1,9 +1,19 @@
 import logging
+from importlib import import_module
+from pathlib import Path
+import sys
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BASE_DIR / 'src'))
+sys.path.insert(0, str(BASE_DIR / 'examples'))
 
 from catalog import get_catalog
 
-from iceberg_loader import LoaderConfig, load_data_to_iceberg
-from iceberg_loader.arrow_utils import create_arrow_table_from_data
+loader_mod = import_module('iceberg_loader')
+LoaderConfig = loader_mod.LoaderConfig
+load_data_to_iceberg = loader_mod.load_data_to_iceberg
+create_arrow_table_from_data = import_module('iceberg_loader.arrow_utils').create_arrow_table_from_data
+NoSuchTableError = import_module('pyiceberg.exceptions').NoSuchTableError
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -13,8 +23,8 @@ def drop_if_exists(catalog, table_id):
     try:
         catalog.drop_table(table_id)
         logger.info('Dropped existing table %s', table_id)
-    except Exception:
-        pass
+    except NoSuchTableError:
+        return
 
 
 def scenario_initial_append(catalog):
@@ -177,9 +187,9 @@ def verify_table(catalog, table_id, expected_rows):
     table = catalog.load_table(table_id)
     rows = table.scan().to_arrow().num_rows
     if rows == expected_rows:
-        logger.info(f'Verified: Table {table_id} has {rows} rows (Expected: {expected_rows})')
+        logger.info('Verified: Table %s has %s rows (Expected: %s)', table_id, rows, expected_rows)
     else:
-        logger.error(f'Mismatch: Table {table_id} has {rows} rows, expected {expected_rows}')
+        logger.error('Mismatch: Table %s has %s rows, expected %s', table_id, rows, expected_rows)
 
 
 if __name__ == '__main__':

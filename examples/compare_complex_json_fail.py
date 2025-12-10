@@ -1,16 +1,27 @@
 import logging
+from importlib import import_module
+from pathlib import Path
+import sys
 
-import pyarrow as pa
+BASE_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BASE_DIR / 'src'))
+sys.path.insert(0, str(BASE_DIR / 'examples'))
 
 from catalog import get_catalog
-from iceberg_loader import LoaderConfig, load_data_to_iceberg
-from iceberg_loader.arrow_utils import create_arrow_table_from_data
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 def run_comparison():
+    pa = import_module('pyarrow')
+    loader_mod = import_module('iceberg_loader')
+    loader_config_cls = loader_mod.LoaderConfig
+    load_data_to_iceberg = loader_mod.load_data_to_iceberg
+    create_arrow_table_from_data = import_module('iceberg_loader.arrow_utils').create_arrow_table_from_data
     catalog = get_catalog()
     table_id = ('default', 'comparison_complex_json')
 
@@ -40,7 +51,7 @@ def run_comparison():
         logger.info("Created Arrow table with schema:\n%s", arrow_table.schema)
 
         # 2. Load to Iceberg
-        config = LoaderConfig(write_mode='overwrite', schema_evolution=True)
+        config = loader_config_cls(write_mode='overwrite', schema_evolution=True)
         load_data_to_iceberg(
             table_data=arrow_table,
             table_identifier=table_id,
