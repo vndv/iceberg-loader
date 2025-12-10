@@ -186,9 +186,9 @@ Releases are automated via GitHub Actions:
 
 ## Getting Help
 
-- **Questions**: Open a [Discussion](https://github.com/IvanMatveev/iceberg-loader/discussions)
-- **Bugs**: Open an [Issue](https://github.com/IvanMatveev/iceberg-loader/issues)
-- **Features**: Open an [Issue](https://github.com/IvanMatveev/iceberg-loader/issues) with the `enhancement` label
+- **Questions**: Open a [Discussion](https://github.com/vndvtech/iceberg-loader/discussions)
+- **Bugs**: Open an [Issue](https://github.com/vndvtech/iceberg-loader/issues)
+- **Features**: Open an [Issue](https://github.com/vndvtech/iceberg-loader/issues) with the `enhancement` label
 
 ## Code of Conduct
 

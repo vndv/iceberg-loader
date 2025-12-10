@@ -57,11 +57,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/IvanMatveev/iceberg-loader"
-Documentation = "https://github.com/IvanMatveev/iceberg-loader"
-Repository = "https://github.com/IvanMatveev/iceberg-loader"
-"Bug Tracker" = "https://github.com/IvanMatveev/iceberg-loader/issues"
-Changelog = "https://github.com/IvanMatveev/iceberg-loader/releases"
+Homepage = "https://github.com/vndvtech/iceberg-loader"
+Documentation = "https://github.com/vndvtech/iceberg-loader"
+Repository = "https://github.com/vndvtech/iceberg-loader"
+"Bug Tracker" = "https://github.com/vndvtech/iceberg-loader/issues"
+Changelog = "https://github.com/vndvtech/iceberg-loader/releases"
 
 [tool.hatch.version]
 path = "src/iceberg_loader/__about__.py"

@@ -1,6 +1,6 @@
 # Examples
 
-Runnable examples demonstrating various features of `iceberg-loader`. All examples are located in the [`examples/`](https://github.com/IvanMatveev/iceberg-loader/tree/main/examples) directory.
+Runnable examples demonstrating various features of `iceberg-loader`. All examples are located in the [`examples/`](https://github.com/vndvtech/iceberg-loader/tree/main/examples) directory.
 
 ## Prerequisites
 
@@ -15,19 +15,19 @@ docker-compose up -d
 
 | Example | Description |
 |---------|-------------|
-| [`load_with_commits.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_with_commits.py) | Commit interval for long streams |
-| [`load_upsert.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_upsert.py) | Upsert (merge) by key columns |
-| [`advanced_scenarios.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/advanced_scenarios.py) | Schema evolution, custom types, partitioning |
-| [`load_complex_json.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_complex_json.py) | Messy JSON handling |
-| [`compare_complex_json_fail.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/compare_complex_json_fail.py) | PyArrow fails on mixed types, iceberg-loader succeeds |
+| [`load_with_commits.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_with_commits.py) | Commit interval for long streams |
+| [`load_upsert.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_upsert.py) | Upsert (merge) by key columns |
+| [`advanced_scenarios.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/advanced_scenarios.py) | Schema evolution, custom types, partitioning |
+| [`load_complex_json.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_complex_json.py) | Messy JSON handling |
+| [`compare_complex_json_fail.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/compare_complex_json_fail.py) | PyArrow fails on mixed types, iceberg-loader succeeds |
 
 ## Optional Examples
 
 | Example | Description |
 |---------|-------------|
-| [`optional/load_stream.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/optional/load_stream.py) | Arrow IPC stream loading |
-| [`optional/load_from_api.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/optional/load_from_api.py) | Simulated REST API ingestion |
-| [`optional/maintenance_example.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/optional/maintenance_example.py) | Snapshot expiration |
+| [`optional/load_stream.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/optional/load_stream.py) | Arrow IPC stream loading |
+| [`optional/load_from_api.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/optional/load_from_api.py) | Simulated REST API ingestion |
+| [`optional/maintenance_example.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/optional/maintenance_example.py) | Snapshot expiration |
 
 ## Running
 
