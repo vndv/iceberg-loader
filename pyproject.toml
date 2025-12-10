@@ -7,7 +7,7 @@ name = "iceberg-loader"
 dynamic = ["version"]
 description = 'Utilities for loading data into Iceberg tables using PyArrow'
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10"
 license = "MIT"
 keywords = ["iceberg", "arrow", "etl"]
 authors = [
@@ -21,14 +21,16 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: Implementation :: CPython",
   "Operating System :: OS Independent",
   "Topic :: Database",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-  "pyarrow>=14.0.0",
-  "pyiceberg>=0.6.0",
+  "pyarrow>=18.0.0",
+  "pyiceberg>=0.7.1",
 ]
 
 [project.optional-dependencies]
@@ -39,7 +41,7 @@ s3 = [
   "pyiceberg[s3fs]>=0.6.0",
 ]
 all = [
-  "pyiceberg[hive,s3fs]>=0.6.0",
+  "pyiceberg[hive,s3fs,pyiceberg-core]>=0.6.0",
 ]
 test = [
   "pytest>=7.0",

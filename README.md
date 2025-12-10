@@ -28,6 +28,7 @@ Although **PyIceberg** is the official and powerful library for interacting with
 - **Messy JSON friendly**: Dicts/lists/mixed types are auto-serialized to JSON strings.
 - **Schema evolution (opt-in)**: Union incoming schema with the table when enabled.
 - **Idempotent writes**: Replace partitions safely with `replace_filter`.
+- **Upsert (Merge Into)**: Update existing rows and insert new ones using `upsert` mode.
 - **Maintenance helpers**: Snapshot expiration utilities.
 
 ## Installation
@@ -144,6 +145,20 @@ load_data_to_iceberg(
 )
 ```
 
+### Upsert (Merge Into)
+
+Perform a merge operation (update existing rows, insert new ones) based on key columns. Requires PyIceberg >= 0.7.0.
+
+```python
+load_data_to_iceberg(
+    table_data=data,
+    table_identifier=("my_db", "my_table"),
+    catalog=catalog,
+    write_mode="upsert",
+    join_cols=["id"]  # Rows with matching "id" will be updated, others inserted
+)
+```
+
 ### Batch Loading
 For large datasets, use `load_batches_to_iceberg` with an iterator of RecordBatches:
 
@@ -213,12 +228,13 @@ def load_batches_to_iceberg(
     batch_iterator: Iterator[pa.RecordBatch] | pa.RecordBatchReader,
     table_identifier: tuple[str, str],
     catalog: Catalog,
-    write_mode: Literal['overwrite', 'append'] = 'overwrite',
+    write_mode: Literal['overwrite', 'append', 'upsert'] = 'overwrite',
     partition_col: str | None = None,
     replace_filter: str | None = None,
     schema_evolution: bool = False,
     table_properties: dict[str, Any] | None = None,
     commit_interval: int = 0,
+    join_cols: list[str] | None = None,
 ) -> dict[str, Any]
 ```
 
@@ -239,23 +255,36 @@ def load_batches_to_iceberg(
 - Manages metadata and connection to the table storage
 - Supports Hive, REST, Glue, and other catalog types
 
-**`write_mode`** *(Literal['overwrite', 'append'], default='overwrite')*
+**`write_mode`** *(Literal['overwrite', 'append', 'upsert'], default='overwrite')*
 - Data write mode:
   - `'overwrite'`: First batch overwrites the table, subsequent batches are appended
   - `'append'`: All batches are appended to existing data
-- Can be combined with `replace_filter` for idempotent writes
+  - `'upsert'`: Merge operation (update/insert) based on `join_cols`
+- Can be combined with `replace_filter` for idempotent writes (only for `'append'`)
 
 **`partition_col`** *(str | None, default=None)*
-- Column name for table partitioning
+- Column name (and optional transform) for table partitioning
 - Used only when creating a new table
-- Example: `"event_date"` or `"signup_date"`
-- Uses Identity transform for partitioning
+- Supported syntax:
+  - `"col_name"` (Identity transform)
+  - `"year(col_name)"`
+  - `"month(col_name)"`
+  - `"day(col_name)"`
+  - `"hour(col_name)"`
+  - `"bucket(N, col_name)"` (e.g., `"bucket(16, id)"`)
+  - `"truncate(W, col_name)"` (e.g., `"truncate(4, name)"`)
+
 
 **`replace_filter`** *(str | None, default=None)*
 - SQL-like filter for idempotent writes (works only with `write_mode='append'`)
 - Deletes existing rows matching the filter before the first write
 - Example: `"event_date == '2023-01-01'"` or `"year == 2023 AND month == 1"`
 - Used for safe partition reloading
+
+**`join_cols`** *(list[str] | None, default=None)*
+- List of column names to use as keys for upsert operations
+- Required when `write_mode='upsert'`
+- Example: `["id"]` or `["user_id", "date"]`
 
 **`schema_evolution`** *(bool, default=False)*
 - Enables automatic table schema evolution

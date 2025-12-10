@@ -31,10 +31,11 @@ class IcebergLoader:
         self,
         table_data: pa.Table,
         table_identifier: tuple[str, str],
-        write_mode: Literal['overwrite', 'append'] = 'overwrite',
+        write_mode: Literal['overwrite', 'append', 'upsert'] = 'overwrite',
         partition_col: str | None = None,
         replace_filter: str | None = None,
         schema_evolution: bool = False,
+        join_cols: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Load PyArrow Table into Iceberg table.
@@ -48,17 +49,19 @@ class IcebergLoader:
             partition_col=partition_col,
             replace_filter=replace_filter,
             schema_evolution=schema_evolution,
+            join_cols=join_cols,
         )
 
     def load_ipc_stream(
         self,
         stream_source: str | BinaryIO | pa.NativeFile,
         table_identifier: tuple[str, str],
-        write_mode: Literal['overwrite', 'append'] = 'overwrite',
+        write_mode: Literal['overwrite', 'append', 'upsert'] = 'overwrite',
         partition_col: str | None = None,
         replace_filter: str | None = None,
         schema_evolution: bool = False,
         commit_interval: int = 0,
+        join_cols: list[str] | None = None,
     ) -> dict[str, Any]:
         """Loads data from an Apache Arrow IPC stream source."""
         with pa.ipc.open_stream(stream_source) as reader:
@@ -70,17 +73,19 @@ class IcebergLoader:
                 replace_filter=replace_filter,
                 schema_evolution=schema_evolution,
                 commit_interval=commit_interval,
+                join_cols=join_cols,
             )
 
     def load_data_batches(
         self,
         batch_iterator: Iterator[pa.RecordBatch] | pa.RecordBatchReader,
         table_identifier: tuple[str, str],
-        write_mode: Literal['overwrite', 'append'] = 'overwrite',
+        write_mode: Literal['overwrite', 'append', 'upsert'] = 'overwrite',
         partition_col: str | None = None,
         replace_filter: str | None = None,
         schema_evolution: bool = False,
         commit_interval: int = 0,
+        join_cols: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Main orchestration method.
@@ -93,7 +98,7 @@ class IcebergLoader:
         pending_batches: list[pa.RecordBatch] = []
 
         # Strategy selection
-        strategy = get_write_strategy(write_mode, replace_filter)
+        strategy = get_write_strategy(write_mode, replace_filter, join_cols)
 
         # State tracking
         table = None
@@ -157,8 +162,8 @@ class IcebergLoader:
             combined_table = convert_table_types(combined_table, target_schema)
 
             # 4. Write via Strategy
-            with table.transaction() as txn:
-                strategy.write(txn, combined_table, is_first_write)
+            # The strategy now handles transaction management internally
+            strategy.write(table, combined_table, is_first_write)
 
             is_first_write = False
             total_rows += len(combined_table)
@@ -196,26 +201,36 @@ def load_data_to_iceberg(
     table_data: pa.Table,
     table_identifier: tuple[str, str],
     catalog: Catalog,
-    write_mode: Literal['overwrite', 'append'] = 'overwrite',
+    write_mode: Literal['overwrite', 'append', 'upsert'] = 'overwrite',
     partition_col: str | None = None,
     replace_filter: str | None = None,
     schema_evolution: bool = False,
     table_properties: dict[str, Any] | None = None,
+    join_cols: list[str] | None = None,
 ) -> dict[str, Any]:
     loader = IcebergLoader(catalog, table_properties)
-    return loader.load_data(table_data, table_identifier, write_mode, partition_col, replace_filter, schema_evolution)
+    return loader.load_data(
+        table_data,
+        table_identifier,
+        write_mode,
+        partition_col,
+        replace_filter,
+        schema_evolution,
+        join_cols,
+    )
 
 
 def load_batches_to_iceberg(
     batch_iterator: Iterator[pa.RecordBatch] | pa.RecordBatchReader,
     table_identifier: tuple[str, str],
     catalog: Catalog,
-    write_mode: Literal['overwrite', 'append'] = 'overwrite',
+    write_mode: Literal['overwrite', 'append', 'upsert'] = 'overwrite',
     partition_col: str | None = None,
     replace_filter: str | None = None,
     schema_evolution: bool = False,
     table_properties: dict[str, Any] | None = None,
     commit_interval: int = 0,
+    join_cols: list[str] | None = None,
 ) -> dict[str, Any]:
     loader = IcebergLoader(catalog, table_properties)
     return loader.load_data_batches(
@@ -226,6 +241,7 @@ def load_batches_to_iceberg(
         replace_filter,
         schema_evolution,
         commit_interval,
+        join_cols,
     )
 
 
@@ -233,12 +249,13 @@ def load_ipc_stream_to_iceberg(
     stream_source: str | BinaryIO | pa.NativeFile,
     table_identifier: tuple[str, str],
     catalog: Catalog,
-    write_mode: Literal['overwrite', 'append'] = 'overwrite',
+    write_mode: Literal['overwrite', 'append', 'upsert'] = 'overwrite',
     partition_col: str | None = None,
     replace_filter: str | None = None,
     schema_evolution: bool = False,
     table_properties: dict[str, Any] | None = None,
     commit_interval: int = 0,
+    join_cols: list[str] | None = None,
 ) -> dict[str, Any]:
     loader = IcebergLoader(catalog, table_properties)
     return loader.load_ipc_stream(
@@ -249,4 +266,5 @@ def load_ipc_stream_to_iceberg(
         replace_filter,
         schema_evolution,
         commit_interval,
+        join_cols,
     )

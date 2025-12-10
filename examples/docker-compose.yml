@@ -71,18 +71,3 @@ services:
       "
     depends_on:
       - minio
-
-  # postgres_ext:
-  #   image: postgres:14
-  #   environment:
-  #     POSTGRES_USER: root
-  #     POSTGRES_PASSWORD: root
-  #     POSTGRES_DB: ads
-  #   ports:
-  #     - "5433:5432"
-  #   volumes:
-  #       - ./postgres:/docker-entrypoint-initdb.d
-  #       - postgresdb:/var/lib/postgresql/data
-  #
-volumes:
-  postgresdb:

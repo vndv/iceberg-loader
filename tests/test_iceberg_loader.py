@@ -3,10 +3,9 @@ from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pyarrow as pa
-from pyiceberg.exceptions import NoSuchTableError
-
 from iceberg_loader.iceberg_loader import IcebergLoader, load_data_to_iceberg
 from iceberg_loader.settings import TABLE_PROPERTIES
+from pyiceberg.exceptions import NoSuchTableError
 
 
 class TestIcebergLoader(unittest.TestCase):
@@ -84,6 +83,19 @@ class TestIcebergLoader(unittest.TestCase):
 
         txn.delete.assert_called_once_with("date_col == '2023-01-01'")
         txn.append.assert_called_once()
+
+    def test_load_data_upsert(self):
+        mock_table = MagicMock()
+        self.mock_catalog.load_table.return_value = mock_table
+        expected_iceberg_schema = self.loader.schema_manager._arrow_to_iceberg(self.arrow_schema)
+        mock_table.schema.return_value = expected_iceberg_schema
+
+        self.loader.load_data(self.arrow_table, self.table_identifier, write_mode='upsert', join_cols=['id'])
+
+        mock_table.upsert.assert_called_once()
+        call_args = mock_table.upsert.call_args
+        self.assertEqual(call_args.kwargs['join_cols'], ['id'])
+        mock_table.transaction.assert_not_called()
 
     def test_public_api_wrapper(self):
         with patch('iceberg_loader.iceberg_loader.IcebergLoader') as mock_loader_cls:

@@ -1,7 +1,14 @@
 import io
 import logging
 
+# Ensure parent directory (examples/) is on path
+import sys
+from pathlib import Path
+
 import pyarrow as pa
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from catalog import get_catalog
 
 from iceberg_loader import load_ipc_stream_to_iceberg

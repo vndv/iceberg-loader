@@ -52,7 +52,7 @@ def scenario_append_new_partition(catalog):
         table_identifier=table_id,
         catalog=catalog,
         write_mode='append',
-        partition_col='ts',
+        partition_col='month(ts)',
         schema_evolution=True,
     )
     # Append day 2

@@ -1,10 +1,15 @@
 import logging
+import sys
+from pathlib import Path
+
+# Ensure parent directory (examples/) is on path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from catalog import get_catalog
-from rest_adapter import RestAdapter
 
 from iceberg_loader import load_data_to_iceberg
 from iceberg_loader.arrow_utils import create_arrow_table_from_data
+from optional.rest_adapter import RestAdapter
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

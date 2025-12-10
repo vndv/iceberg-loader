@@ -1,4 +1,9 @@
 import logging
+import sys
+from pathlib import Path
+
+# Ensure parent directory (examples/) is on path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from catalog import get_catalog
 
