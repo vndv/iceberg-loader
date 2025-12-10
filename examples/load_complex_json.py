@@ -1,14 +1,7 @@
 import json
 import logging
-import sys
-from pathlib import Path
-
-# Ensure parent directory (examples/) is on path
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from catalog import get_catalog
-
 from iceberg_loader import LoaderConfig, load_data_to_iceberg
 from iceberg_loader.arrow_utils import create_arrow_table_from_data
 
@@ -27,7 +20,7 @@ def drop_if_exists(catalog, table_id):
 def run_complex_load():
     catalog = get_catalog()
     table_id = ('default', 'complex_json_test')
-    drop_if_exists(catalog, table_id)
+    # drop_if_exists(catalog, table_id)
 
     data = [
         {'id': 1, 'complex_field': {'a': 1, 'b': 'nested'}},

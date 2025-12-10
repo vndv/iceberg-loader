@@ -1,10 +1,4 @@
 import logging
-import sys
-from pathlib import Path
-
-# Ensure parent directory (examples/) is on path
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from catalog import get_catalog
 
@@ -25,7 +19,7 @@ def drop_if_exists(catalog, table_id):
 
 def scenario_initial_append(catalog):
     table_id = ('default', 'advanced_s1_initial_append')
-    drop_if_exists(catalog, table_id)
+    # drop_if_exists(catalog, table_id)
 
     data_day_1 = [
         {'id': 1, 'category': 'A', 'ts': '2023-01-01', 'value': 100},
@@ -40,7 +34,7 @@ def scenario_initial_append(catalog):
 
 def scenario_append_new_partition(catalog):
     table_id = ('default', 'advanced_s2_append_partition')
-    drop_if_exists(catalog, table_id)
+    # drop_if_exists(catalog, table_id)
 
     # Initial day 1
     data_day_1 = [
@@ -69,7 +63,7 @@ def scenario_append_new_partition(catalog):
 
 def scenario_idempotent_replace_partition(catalog):
     table_id = ('default', 'advanced_s3_idempotent_replace')
-    drop_if_exists(catalog, table_id)
+    # drop_if_exists(catalog, table_id)
 
     # Base data day1+day2
     base_data = [
@@ -135,7 +129,7 @@ def scenario_schema_evolution(catalog):
 
 def scenario_full_overwrite(catalog):
     table_id = ('default', 'advanced_s5_full_overwrite')
-    drop_if_exists(catalog, table_id)
+    # drop_if_exists(catalog, table_id)
 
     initial = [
         {'id': 1, 'category': 'A', 'ts': '2023-01-01', 'value': 100},

@@ -31,6 +31,9 @@ jobs:
   build-and-publish:
     needs: tests
     runs-on: ubuntu-latest
+    env:
+      TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -61,16 +64,16 @@ jobs:
           PY
 
       - name: Publish to TestPyPI (optional)
-        if: ${{ secrets.TEST_PYPI_API_TOKEN != '' }}
+        if: env.TEST_PYPI_API_TOKEN != ''
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          TWINE_PASSWORD: ${{ env.TEST_PYPI_API_TOKEN }}
         run: twine upload --repository testpypi dist/*
 
       - name: Publish to PyPI
-        if: ${{ secrets.PYPI_API_TOKEN != '' }}
+        if: env.PYPI_API_TOKEN != ''
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          TWINE_PASSWORD: ${{ env.PYPI_API_TOKEN }}
         run: twine upload dist/*
 
