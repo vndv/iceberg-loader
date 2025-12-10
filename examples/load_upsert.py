@@ -1,11 +1,18 @@
 import logging
+import sys
 import time
 from datetime import datetime
+from pathlib import Path
 
 import pyarrow as pa
+
+# Ensure parent directory (examples/) is on path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from catalog import get_catalog
 
-from iceberg_loader import load_data_to_iceberg
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -32,12 +39,8 @@ def run_upsert_example():
         }
     )
 
-    load_data_to_iceberg(
-        initial_data,
-        table_identifier,
-        catalog,
-        write_mode="overwrite",
-    )
+    config_overwrite = LoaderConfig(write_mode="overwrite")
+    load_data_to_iceberg(initial_data, table_identifier, catalog, config=config_overwrite)
 
     table = catalog.load_table(table_identifier)
     rows = table.scan().to_arrow()
@@ -56,13 +59,8 @@ def run_upsert_example():
         }
     )
 
-    load_data_to_iceberg(
-        upsert_data,
-        table_identifier,
-        catalog,
-        write_mode="upsert",
-        join_cols=["id"],
-    )
+    config_upsert = LoaderConfig(write_mode="upsert", join_cols=["id"])
+    load_data_to_iceberg(upsert_data, table_identifier, catalog, config_upsert)
 
     rows_after = table.scan().to_arrow()
     logger.info("Rows after upsert: %d", len(rows_after))

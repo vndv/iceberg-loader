@@ -1,9 +1,15 @@
 import json
 import logging
+import sys
+from pathlib import Path
+
+# Ensure parent directory (examples/) is on path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from catalog import get_catalog
 
-from iceberg_loader import load_data_to_iceberg
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
 from iceberg_loader.arrow_utils import create_arrow_table_from_data
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -43,9 +49,8 @@ def run_complex_load():
     logger.info(arrow_table.to_pydict())
 
     logger.info('\nLoading to Iceberg...')
-    load_data_to_iceberg(
-        table_data=arrow_table, table_identifier=table_id, catalog=catalog, write_mode='append', schema_evolution=True
-    )
+    config = LoaderConfig(write_mode='append', schema_evolution=True)
+    load_data_to_iceberg(table_data=arrow_table, table_identifier=table_id, catalog=catalog, config=config)
 
     logger.info('\nVerifying data in Iceberg...')
     table = catalog.load_table(table_id)

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main]
   schedule:
     # Run tests weekly on Monday at 00:00 UTC to catch dependency issues
     - cron: '0 0 * * 1'
@@ -17,12 +17,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
           cache: "pip"
-      - name: Install hatch
-        run: pip install hatch
-      - name: Lint
-        run: hatch run lint
+      - name: Install Ruff
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruff
+      - name: Lint (Ruff, config from pyproject.toml)
+        run: ruff check --output-format=github .
 
   build:
     needs: lint
@@ -42,5 +44,17 @@ jobs:
       - name: Type check
         run: hatch run types:check
       - name: Test
-        run: hatch run test -- --cov=iceberg_loader --cov=tests --cov-report=xml
+        run: hatch run test -- --cov=iceberg_loader --cov=tests --cov-report=xml --junitxml=pytest-report.xml
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: coverage.xml
+          if-no-files-found: error
+      - name: Upload pytest report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report-${{ matrix.python-version }}
+          path: pytest-report.xml
+          if-no-files-found: error
 

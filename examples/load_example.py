@@ -2,7 +2,7 @@ import logging
 
 from catalog import get_catalog
 
-from iceberg_loader import load_data_to_iceberg
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -54,16 +54,17 @@ def run_example():
     except Exception:
         pass
 
+    config = LoaderConfig(
+        write_mode='append',
+        partition_col='signup_date',
+        schema_evolution=True,
+    )
+
     result = load_data_to_iceberg(
         table_data=arrow_table,
         table_identifier=table_id,
         catalog=catalog,
-        write_mode='append',
-        # New flexible partitioning:
-        partition_col='signup_date',
-        # Optional: idempotency filter (if we were reloading data for a specific date)
-        # replace_filter="signup_date == '2023-01-01'",
-        schema_evolution=True,
+        config=config,
     )
 
     logger.info('Load result: %s', result)

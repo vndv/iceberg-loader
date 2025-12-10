@@ -105,7 +105,7 @@ class TestIcebergLoader(unittest.TestCase):
 
             load_data_to_iceberg(self.arrow_table, self.table_identifier, self.mock_catalog)
 
-            mock_loader_cls.assert_called_with(self.mock_catalog, None)
+            mock_loader_cls.assert_called_with(self.mock_catalog, None, default_config=None)
             mock_instance.load_data.assert_called_once()
 
     def test_field_ids_preserved_on_evolution(self):

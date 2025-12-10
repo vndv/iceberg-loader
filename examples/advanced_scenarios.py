@@ -1,8 +1,14 @@
 import logging
+import sys
+from pathlib import Path
+
+# Ensure parent directory (examples/) is on path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from catalog import get_catalog
 
-from iceberg_loader import load_data_to_iceberg
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
 from iceberg_loader.arrow_utils import create_arrow_table_from_data
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -27,14 +33,8 @@ def scenario_initial_append(catalog):
     ]
     table_arrow = create_arrow_table_from_data(data_day_1)
 
-    load_data_to_iceberg(
-        table_data=table_arrow,
-        table_identifier=table_id,
-        catalog=catalog,
-        write_mode='append',
-        partition_col='ts',
-        schema_evolution=True,
-    )
+    config = LoaderConfig(write_mode='append', partition_col='ts', schema_evolution=True)
+    load_data_to_iceberg(table_data=table_arrow, table_identifier=table_id, catalog=catalog, config=config)
     verify_table(catalog, table_id, expected_rows=2)
 
 
@@ -47,13 +47,12 @@ def scenario_append_new_partition(catalog):
         {'id': 1, 'category': 'A', 'ts': '2023-01-01', 'value': 100},
         {'id': 2, 'category': 'B', 'ts': '2023-01-01', 'value': 200},
     ]
+    config = LoaderConfig(write_mode='append', partition_col='month(ts)', schema_evolution=True)
     load_data_to_iceberg(
         table_data=create_arrow_table_from_data(data_day_1),
         table_identifier=table_id,
         catalog=catalog,
-        write_mode='append',
-        partition_col='month(ts)',
-        schema_evolution=True,
+        config=config,
     )
     # Append day 2
     data_day_2 = [
@@ -63,7 +62,7 @@ def scenario_append_new_partition(catalog):
         table_data=create_arrow_table_from_data(data_day_2),
         table_identifier=table_id,
         catalog=catalog,
-        write_mode='append',
+        config=LoaderConfig(write_mode='append'),
     )
     verify_table(catalog, table_id, expected_rows=3)
 
@@ -78,13 +77,12 @@ def scenario_idempotent_replace_partition(catalog):
         {'id': 2, 'category': 'B', 'ts': '2023-01-01', 'value': 200},
         {'id': 3, 'category': 'A', 'ts': '2023-01-02', 'value': 150},
     ]
+    config_base = LoaderConfig(write_mode='append', partition_col='ts', schema_evolution=True)
     load_data_to_iceberg(
         table_data=create_arrow_table_from_data(base_data),
         table_identifier=table_id,
         catalog=catalog,
-        write_mode='append',
-        partition_col='ts',
-        schema_evolution=True,
+        config=config_base,
     )
 
     # Corrected day1
@@ -92,12 +90,12 @@ def scenario_idempotent_replace_partition(catalog):
         {'id': 1, 'category': 'A', 'ts': '2023-01-01', 'value': 999},
         {'id': 2, 'category': 'B', 'ts': '2023-01-01', 'value': 200},
     ]
+    config_replace = LoaderConfig(write_mode='append', replace_filter="ts == '2023-01-01'")
     load_data_to_iceberg(
         table_data=create_arrow_table_from_data(corrected_day1),
         table_identifier=table_id,
         catalog=catalog,
-        write_mode='append',
-        replace_filter="ts == '2023-01-01'",
+        config=config_replace,
     )
     verify_table(catalog, table_id, expected_rows=3)
 
@@ -109,13 +107,12 @@ def scenario_schema_evolution(catalog):
     base_data = [
         {'id': 1, 'category': 'A', 'ts': '2023-01-01', 'value': 100},
     ]
+    config_base = LoaderConfig(write_mode='append', partition_col='ts', schema_evolution=True)
     load_data_to_iceberg(
         table_data=create_arrow_table_from_data(base_data),
         table_identifier=table_id,
         catalog=catalog,
-        write_mode='append',
-        partition_col='ts',
-        schema_evolution=True,
+        config=config_base,
     )
 
     evolved = [
@@ -125,8 +122,7 @@ def scenario_schema_evolution(catalog):
         table_data=create_arrow_table_from_data(evolved),
         table_identifier=table_id,
         catalog=catalog,
-        write_mode='append',
-        schema_evolution=True,
+        config=LoaderConfig(write_mode='append', schema_evolution=True),
     )
     verify_table(catalog, table_id, expected_rows=2)
 
@@ -145,13 +141,12 @@ def scenario_full_overwrite(catalog):
         {'id': 1, 'category': 'A', 'ts': '2023-01-01', 'value': 100},
         {'id': 2, 'category': 'B', 'ts': '2023-01-02', 'value': 200},
     ]
+    config_base = LoaderConfig(write_mode='append', partition_col='ts', schema_evolution=True)
     load_data_to_iceberg(
         table_data=create_arrow_table_from_data(initial),
         table_identifier=table_id,
         catalog=catalog,
-        write_mode='append',
-        partition_col='ts',
-        schema_evolution=True,
+        config=config_base,
     )
 
     replace_all = [
@@ -161,8 +156,7 @@ def scenario_full_overwrite(catalog):
         table_data=create_arrow_table_from_data(replace_all),
         table_identifier=table_id,
         catalog=catalog,
-        write_mode='overwrite',
-        schema_evolution=True,
+        config=LoaderConfig(write_mode='overwrite', schema_evolution=True),
     )
     verify_table(catalog, table_id, expected_rows=1)
 

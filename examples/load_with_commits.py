@@ -1,10 +1,17 @@
 import logging
+import sys
 import time
+from pathlib import Path
 
 import pyarrow as pa
+
+# Ensure parent directory (examples/) is on path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from catalog import get_catalog
 
-from iceberg_loader import load_batches_to_iceberg
+from iceberg_loader import LoaderConfig, load_batches_to_iceberg
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -38,12 +45,13 @@ def run_example():
     # We will load 20 batches, committing every 5 batches.
     # This means we expect roughly 4 snapshots (transactions) to be created.
 
+    config = LoaderConfig(write_mode='append', commit_interval=5)
+
     result = load_batches_to_iceberg(
         batch_iterator=generate_batches(num_batches=20, batch_size=100),
         table_identifier=table_id,
         catalog=catalog,
-        write_mode='append',
-        commit_interval=5,  # Commit every 5 batches
+        config=config,
     )
 
     logger.info('Load complete. Result: %s', result)

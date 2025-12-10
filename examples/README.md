@@ -7,9 +7,9 @@ This directory contains runnable examples demonstrating various features of `ice
 You need a running Iceberg catalog (e.g., REST catalog) and MinIO/S3.
 A `docker-compose.yml` is provided to spin up a local environment.
 
-```bash
-docker-compose up -d
-```
+   ```bash
+   docker-compose up -d
+   ```
 
 ## Running Examples
 
