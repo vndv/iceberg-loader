@@ -5,11 +5,11 @@ build-backend = "hatchling.build"
 [project]
 name = "iceberg-loader"
 dynamic = ["version"]
-description = 'Utilities for loading data into Iceberg tables using PyArrow'
+description = 'A convenience wrapper around PyIceberg for simplified data loading into Apache Iceberg tables'
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-keywords = ["iceberg", "arrow", "etl"]
+keywords = ["iceberg", "arrow", "etl", "pyarrow", "data-loading", "schema-evolution", "upsert"]
 authors = [
   { name = "Ivan Matveev", email = "skioneim@gmail.com" },
 ]
@@ -57,9 +57,11 @@ dev = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/Ivan Matveev/iceberg-loader#readme"
-Issues = "https://github.com/Ivan Matveev/iceberg-loader/issues"
-Source = "https://github.com/Ivan Matveev/iceberg-loader"
+Homepage = "https://github.com/IvanMatveev/iceberg-loader"
+Documentation = "https://github.com/IvanMatveev/iceberg-loader"
+Repository = "https://github.com/IvanMatveev/iceberg-loader"
+"Bug Tracker" = "https://github.com/IvanMatveev/iceberg-loader/issues"
+Changelog = "https://github.com/IvanMatveev/iceberg-loader/releases"
 
 [tool.hatch.version]
 path = "src/iceberg_loader/__about__.py"
@@ -98,6 +100,10 @@ omit = [
 iceberg_loader = ["src/iceberg_loader", "*/iceberg-loader/src/iceberg_loader"]
 tests = ["tests", "*/iceberg-loader/tests"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+log_level = "INFO"
+
 [tool.coverage.report]
 exclude_lines = [
   "no cov",
@@ -111,8 +117,20 @@ indent-width = 4
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "N", "TID"]
+select = ["E", "F", "I", "UP", "B", "SIM", "N", "TID", "S", "C4", "PIE", "RET", "PTH", "RUF"]
 ignore = ["BLE001", "UP017"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",
+    "D103",
+    "PLR2004",
+]
+"examples/*" = [
+    "D103",
+    "T201",
+    "S101",
+]
 
 [tool.ruff.format]
 quote-style = "single"
@@ -139,10 +157,6 @@ warn_return_any = false
 module = ["pyarrow", "pyarrow.*", "pyiceberg.*", "requests"]
 ignore_missing_imports = true
 
-[tool.uv.workspace]
-members = [
-    "examples",
-]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/iceberg_loader"]

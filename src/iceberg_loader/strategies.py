@@ -23,7 +23,6 @@ class WriteStrategy(ABC):
             data: The PyArrow table to write.
             is_first_write: True if this is the first batch/transaction in the stream.
         """
-        pass
 
 
 class AppendStrategy(WriteStrategy):

@@ -104,7 +104,6 @@ site/
 # Hatch env cache
 *.hatch_env_cache
 .cursor/
-uv.lock
 
 # Pytest
 .pytest_cache/

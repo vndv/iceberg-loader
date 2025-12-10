@@ -68,8 +68,7 @@ class TypeRegistry:
         if pa.types.is_timestamp(arrow_type):
             if arrow_type.tz is not None:
                 return TimestamptzType()
-            else:
-                return TimestampType()
+            return TimestampType()
 
         if pa.types.is_decimal(arrow_type):
             precision = getattr(arrow_type, 'precision', 38)

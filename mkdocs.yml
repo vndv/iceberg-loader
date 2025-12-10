@@ -9,4 +9,5 @@ theme:
     accent: light blue
 nav:
   - Home: index.md
+  - Examples: examples.md
 
