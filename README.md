@@ -63,8 +63,8 @@ hatch run test
 
 Thanks to all contributors who have helped make this project better!
 
-<a href="https://github.com/IvanMatveev/iceberg-loader/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=IvanMatveev/iceberg-loader" />
+<a href="https://github.com/vndv/iceberg-loader/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=vndv/iceberg-loader" />
 </a>
 
 Made with [contrib.rocks](https://contrib.rocks).
