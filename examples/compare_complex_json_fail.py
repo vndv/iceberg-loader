@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR / 'src'))
 sys.path.insert(0, str(BASE_DIR / 'examples'))
 
-from catalog import get_catalog
+from catalog import get_catalog  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
