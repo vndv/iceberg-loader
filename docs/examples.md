@@ -25,9 +25,9 @@ docker-compose up -d
 
 | Example | Description |
 |---------|-------------|
-| [`optional/load_stream.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/optional/load_stream.py) | Arrow IPC stream loading |
-| [`optional/load_from_api.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/optional/load_from_api.py) | Simulated REST API ingestion |
-| [`optional/maintenance_example.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/optional/maintenance_example.py) | Snapshot expiration |
+| [`load_stream.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_stream.py) | Arrow IPC stream loading |
+| [`load_from_api.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_from_api.py) | Simulated REST API ingestion |
+| [`maintenance_example.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/maintenance_example.py) | Snapshot expiration |
 
 ## Running
 
@@ -42,10 +42,10 @@ python load_upsert.py
 python advanced_scenarios.py
 python load_complex_json.py
 
-# Optional
-python optional/load_stream.py
-python optional/load_from_api.py
-python optional/maintenance_example.py
+# Other
+python load_stream.py
+python load_from_api.py
+python maintenance_example.py
 ```
 
 Or with [uv](https://docs.astral.sh/uv/):
@@ -83,6 +83,33 @@ config = LoaderConfig(write_mode="upsert", join_cols=["id"])
 load_data_to_iceberg(data, ("db", "users"), catalog, config=config)
 ```
 
+### Dynamic Configuration (Multi-table Load)
+
+When loading multiple tables in a loop, you can dynamically switch `LoaderConfig` for each table:
+
+```python
+# Define configurations
+config_overwrite = LoaderConfig(write_mode='overwrite', schema_evolution=True)
+config_upsert = LoaderConfig(write_mode='upsert', join_cols=['id'], schema_evolution=True)
+
+# Map endpoints/tables to specific configs
+endpoint_configs = {
+    'customers': config_overwrite,
+    'orders': config_upsert,
+}
+
+for endpoint in endpoints:
+    # Use specific config or default to append
+    current_config = endpoint_configs.get(endpoint, LoaderConfig(write_mode='append'))
+    
+    load_data_to_iceberg(
+        table_data=data,
+        table_identifier=('default', endpoint),
+        catalog=catalog,
+        config=current_config
+    )
+```
+
 ### Messy JSON
 
 iceberg-loader auto-serializes mixed/nested types to JSON strings when PyArrow would fail:
@@ -117,4 +144,3 @@ config = LoaderConfig(
 )
 load_data_to_iceberg(data, ("db", "events"), catalog, config=config)
 ```
-

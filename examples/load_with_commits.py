@@ -2,10 +2,10 @@ import logging
 import time
 
 import pyarrow as pa
-
 from catalog import get_catalog
-from iceberg_loader import LoaderConfig, load_batches_to_iceberg
 from pyiceberg.exceptions import NoSuchTableError
+
+from iceberg_loader import LoaderConfig, load_batches_to_iceberg
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

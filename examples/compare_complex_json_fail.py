@@ -1,17 +1,16 @@
 import logging
 
+import pyarrow as pa
 from catalog import get_catalog
+
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
+from iceberg_loader.arrow_utils import create_arrow_table_from_data
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 def run_comparison():
-    import pyarrow as pa
-
-    from iceberg_loader import LoaderConfig, load_data_to_iceberg
-    from iceberg_loader.arrow_utils import create_arrow_table_from_data
-
     catalog = get_catalog()
     table_id = ('default', 'comparison_complex_json')
 

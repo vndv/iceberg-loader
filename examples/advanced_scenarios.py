@@ -1,9 +1,10 @@
 import logging
 
 from catalog import get_catalog
+from pyiceberg.exceptions import NoSuchTableError
+
 from iceberg_loader import LoaderConfig, load_data_to_iceberg
 from iceberg_loader.arrow_utils import create_arrow_table_from_data
-from pyiceberg.exceptions import NoSuchTableError
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
