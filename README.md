@@ -56,7 +56,7 @@ load_data_to_iceberg(arrow_table, table_id, catalog, config=config)
 
 ## Documentation
 
-Full usage guide, API reference, and examples: **[docs/](docs/index.md)** or run `mkdocs serve` locally.
+Full usage guide, API reference, and examples: **[docs](https://vndvtech.github.io/iceberg-loader/)** or run `mkdocs serve` locally.
 
 ## Contributing
 
