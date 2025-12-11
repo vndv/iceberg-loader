@@ -37,13 +37,21 @@ uv pip install "iceberg-loader[all]"
 ```python
 import pyarrow as pa
 from pyiceberg.catalog import load_catalog
-from iceberg_loader import LoaderConfig, load_data_to_iceberg
+from iceberg_loader import LoaderConfig, load_data_to_iceberg, create_arrow_table_from_data
 
 catalog = load_catalog("default")
-data = pa.Table.from_pydict({"id": [1, 2], "signup_date": ["2023-01-01", "2023-01-02"]})
+table_id = ("default", "comparison_complex_json")
+
+data = [
+    {"id": 1, "complex_field": {"a": 1, "b": "nested"}},
+    {"id": 2, "complex_field": {"a": 2, "b": "another", "c": [1, 2]}},
+    {"id": 3, "complex_field": [1, 2, 3]},
+]
+
+arrow_table = create_arrow_table_from_data(data)
 
 config = LoaderConfig(write_mode="append", partition_col="signup_date", schema_evolution=True)
-load_data_to_iceberg(data, ("db", "users"), catalog, config=config)
+load_data_to_iceberg(arrow_table, table_id, catalog, config=config)
 ```
 
 ## Documentation

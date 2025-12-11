@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 license = "MIT"
 keywords = ["iceberg", "arrow", "etl", "pyarrow", "data-loading", "schema-evolution", "upsert"]
 authors = [
-  { name = "Ivan Matveev", email = "skioneim@gmail.com" },
+  { name = "Ivan Matveev", email = "vndvtech@gmail.com" },
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -156,7 +156,6 @@ warn_return_any = false
 [[tool.mypy.overrides]]
 module = ["pyarrow", "pyarrow.*", "pyiceberg.*", "requests"]
 ignore_missing_imports = true
-
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/iceberg_loader"]

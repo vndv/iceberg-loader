@@ -11,6 +11,25 @@ A `docker-compose.yml` is provided to spin up a local environment.
    docker-compose up -d
    ```
 
+   trino connection
+   host: localhost
+   port: 8080
+   database: iceberg
+   username: trion
+   password:
+
+   minio
+   localhost:9001
+   user: minio
+   password minio123 
+
+## Install dependensiec with UV
+
+```bash
+uv init --python3.14
+uv add "iceberg-loader[all]" 
+```
+
 ## Running Examples
 
 Run from the `examples/` directory with `uv` (core examples):
@@ -32,17 +51,17 @@ uv run python compare_complex_json_fail.py
 uv run python advanced_scenarios.py
 ```
 
-Optional (in `optional/` subfolder, if needed):
+Other examples:
 
 ```bash
 # Arrow IPC stream loading
-uv run python optional/load_stream.py
+uv run python load_stream.py
 
 # Simulated REST API loading
-uv run python optional/load_from_api.py
+uv run python load_from_api.py
 
 # Maintenance: expiring snapshots
-uv run python optional/maintenance_example.py
+uv run python maintenance_example.py
 ```
 
 ## Example summary
@@ -52,6 +71,6 @@ uv run python optional/maintenance_example.py
 - `load_with_commits.py`: commit_interval for streams.
 - `compare_complex_json_fail.py`: PyArrow fails on mixed types, `iceberg-loader` succeeds.
 - `advanced_scenarios.py`: schema evolution, custom types, partitioning.
-- `optional/load_stream.py`: Arrow IPC stream.
-- `optional/load_from_api.py`: REST API batches.
-- `optional/maintenance_example.py`: snapshot expiration.
+- `load_stream.py`: Arrow IPC stream.
+- `load_from_api.py`: REST API batches.
+- `maintenance_example.py`: snapshot expiration.

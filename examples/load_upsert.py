@@ -3,8 +3,9 @@ import time
 from datetime import datetime
 
 import pyarrow as pa
-
 from catalog import get_catalog
+from pyiceberg.exceptions import NoSuchTableError
+
 from iceberg_loader import LoaderConfig, load_data_to_iceberg
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -19,44 +20,44 @@ def run_upsert_example():
     try:
         catalog.drop_table(table_identifier)
         logger.info('Dropped existing table %s', table_identifier)
-    except Exception:
+    except NoSuchTableError:
         pass
 
     # 1. Initial Load
-    logger.info("--- Initial Load ---")
+    logger.info('--- Initial Load ---')
     initial_data = pa.Table.from_pydict(
         {
-            "id": [1, 2, 3],
-            "name": ["Alice", "Bob", "Charlie"],
-            "updated_at": [datetime.now(), datetime.now(), datetime.now()],
+            'id': [1, 2, 3],
+            'name': ['Alice', 'Bob', 'Charlie'],
+            'updated_at': [datetime.now(), datetime.now(), datetime.now()],
         }
     )
 
-    config_overwrite = LoaderConfig(write_mode="overwrite")
+    config_overwrite = LoaderConfig(write_mode='overwrite')
     load_data_to_iceberg(initial_data, table_identifier, catalog, config=config_overwrite)
 
     table = catalog.load_table(table_identifier)
     rows = table.scan().to_arrow()
-    logger.info("Initial rows: %d", len(rows))
+    logger.info('Initial rows: %d', len(rows))
     print(rows.to_pydict())
 
     time.sleep(1)  # Ensure timestamps are different
 
     # 3. Upsert (Update Bob, Insert David)
-    logger.info("\n--- Upsert ---")
+    logger.info('\n--- Upsert ---')
     upsert_data = pa.Table.from_pydict(
         {
-            "id": [2, 4],
-            "name": ["Bob Updated", "David"],
-            "updated_at": [datetime.now(), datetime.now()],
+            'id': [2, 4],
+            'name': ['Bob Updated', 'David'],
+            'updated_at': [datetime.now(), datetime.now()],
         }
     )
 
-    config_upsert = LoaderConfig(write_mode="upsert", join_cols=["id"])
+    config_upsert = LoaderConfig(write_mode='upsert', join_cols=['id'])
     load_data_to_iceberg(upsert_data, table_identifier, catalog, config_upsert)
 
     rows_after = table.scan().to_arrow()
-    logger.info("Rows after upsert: %d", len(rows_after))
+    logger.info('Rows after upsert: %d', len(rows_after))
     print(rows_after.to_pydict())
 
 

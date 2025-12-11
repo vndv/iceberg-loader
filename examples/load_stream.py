@@ -1,17 +1,10 @@
 import io
 import logging
-import sys
-from pathlib import Path
 
 from catalog import get_catalog
+from pyiceberg.exceptions import NoSuchTableError
 
-try:
-    from iceberg_loader import LoaderConfig, load_ipc_stream_to_iceberg
-    from pyiceberg.exceptions import NoSuchTableError
-except ImportError:  # fallback for local src run
-    sys.path.append(str(Path(__file__).resolve().parents[2] / 'src'))
-    from iceberg_loader import LoaderConfig, load_ipc_stream_to_iceberg
-    from pyiceberg.exceptions import NoSuchTableError
+from iceberg_loader import LoaderConfig, load_ipc_stream_to_iceberg
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

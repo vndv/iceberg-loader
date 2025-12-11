@@ -1,14 +1,8 @@
 import logging
-import sys
-from pathlib import Path
 
 from catalog import get_catalog
 
-try:
-    from iceberg_loader import expire_snapshots
-except ImportError:  # fallback for local src run
-    sys.path.append(str(Path(__file__).resolve().parents[2] / 'src'))
-    from iceberg_loader import expire_snapshots
+from iceberg_loader import expire_snapshots
 
 logging.basicConfig(
     level=logging.INFO,
