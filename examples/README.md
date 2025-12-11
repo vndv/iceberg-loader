@@ -7,23 +7,30 @@ This directory contains runnable examples demonstrating various features of `ice
 You need a running Iceberg catalog (e.g., REST catalog) and MinIO/S3.
 A `docker-compose.yml` is provided to spin up a local environment.
 
-   ```bash
-   docker-compose up -d
-   ```
+```bash
+cd examples
+docker-compose up -d
+```
 
-   trino connection
-   host: localhost
-   port: 8080
-   database: iceberg
-   username: trion
-   password:
+Trino connection:
 
-   minio
-   localhost:9001
-   user: minio
-   password minio123 
+```
+host: localhost
+port: 8080
+database: iceberg
+username: trion
+password: <empty>
+```
 
-## Install dependensiec with UV
+MinIO:
+
+```
+endpoint: http://localhost:9001
+access_key: minio
+secret_key: minio123
+```
+
+## Install dependencies with UV
 
 ```bash
 uv init --python3.14
@@ -32,12 +39,9 @@ uv add "iceberg-loader[all]"
 
 ## Running Examples
 
-Run from the `examples/` directory with `uv` (core examples):
+Run from the `examples/` directory with `uv`:
 
 ```bash
-# Basic load
-uv run python load_example.py
-
 # Upsert
 uv run python load_upsert.py
 
@@ -66,7 +70,6 @@ uv run python maintenance_example.py
 
 ## Example summary
 
-- `load_example.py`: basic load.
 - `load_upsert.py`: upsert by keys.
 - `load_with_commits.py`: commit_interval for streams.
 - `compare_complex_json_fail.py`: PyArrow fails on mixed types, `iceberg-loader` succeeds.

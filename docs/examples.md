@@ -4,12 +4,14 @@ Runnable examples demonstrating various features of `iceberg-loader`. All exampl
 
 ## Prerequisites
 
-You need a running Iceberg catalog (e.g., Hive Metastore) and MinIO/S3. A `docker-compose.yml` is provided to spin up a local environment:
+You need a running Iceberg catalog (e.g., Hive Metastore) and MinIO/S3. Use the bundled `docker-compose.yml` to start a local stack (run from repo root):
 
 ```bash
 cd examples
 docker-compose up -d
 ```
+
+Then run examples from the same `examples/` directory (see commands below). With `uv` you can prefix any command as `uv run python <script.py>`.
 
 ## Core Examples
 
@@ -21,7 +23,7 @@ docker-compose up -d
 | [`load_complex_json.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_complex_json.py) | Messy JSON handling |
 | [`compare_complex_json_fail.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/compare_complex_json_fail.py) | PyArrow fails on mixed types, iceberg-loader succeeds |
 
-## Optional Examples
+## Other Examples
 
 | Example | Description |
 |---------|-------------|
@@ -48,10 +50,16 @@ python load_from_api.py
 python maintenance_example.py
 ```
 
-Or with [uv](https://docs.astral.sh/uv/):
+With [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv run python load_with_commits.py
+uv run python load_upsert.py
+uv run python advanced_scenarios.py
+uv run python load_complex_json.py
+uv run python load_stream.py
+uv run python load_from_api.py
+uv run python maintenance_example.py
 ```
 
 ---
