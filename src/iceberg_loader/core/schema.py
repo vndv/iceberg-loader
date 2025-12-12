@@ -23,8 +23,8 @@ from pyiceberg.types import (
     TimestamptzType,
 )
 
-from iceberg_loader import logger
-from iceberg_loader.type_mappings import get_arrow_type, get_iceberg_type
+from iceberg_loader.services.logging import logger
+from iceberg_loader.utils.types import get_arrow_type, get_iceberg_type
 
 
 class SchemaManager:

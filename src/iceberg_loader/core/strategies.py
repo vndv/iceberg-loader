@@ -3,7 +3,7 @@ from typing import Any
 
 import pyarrow as pa
 
-from iceberg_loader import logger
+from iceberg_loader.services.logging import logger
 
 
 class WriteStrategy(ABC):

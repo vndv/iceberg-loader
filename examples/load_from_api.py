@@ -4,7 +4,7 @@ from catalog import get_catalog
 from rest_adapter import RestAdapter
 
 from iceberg_loader import LoaderConfig, load_data_to_iceberg
-from iceberg_loader.arrow_utils import create_arrow_table_from_data
+from iceberg_loader.utils.arrow import create_arrow_table_from_data
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

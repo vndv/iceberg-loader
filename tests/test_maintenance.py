@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from iceberg_loader.maintenance import SnapshotMaintenance, expire_snapshots
+from iceberg_loader.services.maintenance import SnapshotMaintenance, expire_snapshots
 
 
 class FakeSnapshot:

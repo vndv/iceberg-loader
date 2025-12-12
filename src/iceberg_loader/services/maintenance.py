@@ -1,33 +1,21 @@
 from datetime import datetime
 from typing import Any
 
-from iceberg_loader import logger
+from iceberg_loader.services.logging import logger
 
 try:
     from pyiceberg.exceptions import CommitFailedException as IcebergError
-except ImportError:  # pragma: no cover - fallback for environments without pyiceberg
+except ImportError:  # pragma: no cover
 
     class IcebergError(Exception):  # type: ignore[no-redef]
         """Fallback when pyiceberg is not installed."""
 
 
 class SnapshotMaintenance:
-    """
-    Manages Iceberg table snapshot maintenance operations.
-
-    Provides functionality to expire old snapshots and prevent metadata bloat.
-    """
+    """Manages Iceberg table snapshot maintenance operations."""
 
     def expire_snapshots(self, table: Any, keep_last: int = 1, older_than_ms: int | None = None) -> None:
-        """
-        Expire old snapshots to prevent metadata issues.
-
-        Args:
-            table: Iceberg table instance.
-            keep_last: How many most recent snapshots to keep (default: 1).
-            older_than_ms: Optional timestamp in milliseconds; expire snapshots strictly older than this moment.
-                           If provided, it overrides keep_last logic.
-        """
+        """Expire old snapshots to prevent metadata issues."""
         try:
             table.refresh()
 
@@ -49,7 +37,6 @@ class SnapshotMaintenance:
 
             expire = table.maintenance.expire_snapshots()
 
-            # Determine cutoff strategy
             if older_than_ms is not None:
                 cutoff_datetime = datetime.fromtimestamp(older_than_ms / 1000.0)
                 logger.info('Expiring snapshots older than %s (ms=%d)', cutoff_datetime, older_than_ms)
@@ -82,12 +69,5 @@ class SnapshotMaintenance:
 
 
 def expire_snapshots(table: Any, keep_last: int = 1, older_than_ms: int | None = None) -> None:
-    """
-    Convenience function to expire snapshots without instantiating SnapshotMaintenance.
-
-    Args:
-        table: Iceberg table instance.
-        keep_last: How many most recent snapshots to keep (default: 1).
-        older_than_ms: Optional timestamp in milliseconds; expire snapshots strictly older than this moment.
-    """
+    """Convenience function to expire snapshots without instantiating SnapshotMaintenance."""
     SnapshotMaintenance().expire_snapshots(table, keep_last=keep_last, older_than_ms=older_than_ms)

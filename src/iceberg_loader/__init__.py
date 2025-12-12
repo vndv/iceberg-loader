@@ -2,16 +2,16 @@
 #
 # SPDX-License-Identifier: MIT
 
-from iceberg_loader import logger
+import iceberg_loader.services.logging as logger
 from iceberg_loader.__about__ import __version__
-from iceberg_loader.iceberg_loader import (
+from iceberg_loader.core import (
     IcebergLoader,
     LoaderConfig,
     load_batches_to_iceberg,
     load_data_to_iceberg,
     load_ipc_stream_to_iceberg,
 )
-from iceberg_loader.maintenance import expire_snapshots
+from iceberg_loader.services.maintenance import expire_snapshots
 
 __all__ = [
     'IcebergLoader',
