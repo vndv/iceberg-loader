@@ -1,13 +1,16 @@
 # iceberg-loader
 
-A convenience wrapper around [PyIceberg](https://py.iceberg.apache.org/) that simplifies data loading into Apache Iceberg tables. PyArrow-first, handles messy JSON, schema evolution, idempotent replace, upsert, batching, and streaming out of the box.
-
 [![PyPI - Version](https://img.shields.io/pypi/v/iceberg-loader.svg)](https://pypi.org/project/iceberg-loader)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/iceberg-loader.svg)](https://pypi.org/project/iceberg-loader)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/iceberg-loader.svg)](https://pypi.org/project/iceberg-loader)
 [![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)](coverage.xml)
 [![CI](https://github.com/vndvtech/iceberg-loader/actions/workflows/ci.yml/badge.svg)](https://github.com/vndvtech/iceberg-loader/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+📚 [Documentation](https://vndvtech.github.io/iceberg-loader/)
+
+A convenience wrapper around [PyIceberg](https://py.iceberg.apache.org/) that simplifies data loading into Apache Iceberg tables. PyArrow-first, handles messy JSON, schema evolution, idempotent replace, upsert, batching, and streaming out of the box.
+
 
 > **Status:** Actively developed and under testing. PRs are welcome!  
 > Currently tested against Hive Metastore; REST Catalog support is planned.
@@ -29,7 +32,7 @@ pip install "iceberg-loader[all]"
 Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv pip install "iceberg-loader[all]"
+uv add "iceberg-loader[all]"
 ```
 
 ## Quickstart
@@ -53,9 +56,6 @@ config = LoaderConfig(write_mode="append", partition_col="signup_date", schema_e
 load_data_to_iceberg(arrow_table, table_id, catalog, config=config)
 ```
 
-## Documentation
-
-Full usage guide, API reference, and examples: **[docs](https://vndvtech.github.io/iceberg-loader/)** or run `mkdocs serve` locally. For runnable demos see `docs/examples.md`; to try locally, `cd examples && docker-compose up -d`.
 
 ## Contributing
 

@@ -123,10 +123,16 @@ for endpoint in endpoints:
 iceberg-loader auto-serializes mixed/nested types to JSON strings when PyArrow would fail:
 
 ```python
-data = pa.Table.from_pydict({
-    "id": [1, 2],
-    "metadata": [{"key": "value"}, [1, 2, 3]],  # mixed types
-})
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
+from iceberg_loader.utils.arrow import create_arrow_table_from_data
+
+data = [
+    {"id": 1, "complex_field": {"a": 1, "b": "nested"}},
+    {"id": 2, "complex_field": {"a": 2, "b": "another", "c": [1, 2]}},
+    {"id": 3, "complex_field": [1, 2, 3]},
+]
+
+arrow_table = create_arrow_table_from_data(data)
 
 config = LoaderConfig(write_mode="append")
 load_data_to_iceberg(data, ("db", "events"), catalog, config=config)
