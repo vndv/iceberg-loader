@@ -1,10 +1,9 @@
-import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
 import pyarrow as pa
 
-logger = logging.getLogger(__name__)
+from iceberg_loader.services.logging import logger
 
 
 class WriteStrategy(ABC):

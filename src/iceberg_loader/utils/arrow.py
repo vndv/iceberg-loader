@@ -1,5 +1,5 @@
+import contextlib
 import json
-import logging
 from collections.abc import Iterator
 from functools import partial
 from typing import Any
@@ -7,8 +7,9 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.compute as pc
 
+from iceberg_loader.services.logging import logger
+
 _json_dumps = partial(json.dumps, ensure_ascii=False, separators=(',', ':'))
-logger = logging.getLogger(__name__)
 
 
 def _get_memory_pool() -> pa.MemoryPool:
@@ -16,39 +17,19 @@ def _get_memory_pool() -> pa.MemoryPool:
 
 
 def create_arrow_table_from_data(data: list[dict[str, Any]]) -> pa.Table:
-    """
-    Creates a PyArrow Table from a list of dictionaries, handling complex types
-    by serializing them to JSON strings if necessary.
-
-    Args:
-        data: A list of dictionaries representing the rows of the table.
-
-    Returns:
-        A PyArrow Table.
-    """
+    """Create table from dicts, serializing complex values to JSON strings."""
     if not data:
         return pa.Table.from_arrays([], schema=pa.schema([]))
-
     return _create_table_native(data)
 
 
 def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
-    """
-    Manually constructs Arrow arrays from a list of dicts.
-    Handles mixed types by falling back to string (JSON) serialization.
-    """
     if not data:
         return pa.Table.from_arrays([], schema=pa.schema([]))
 
-    # Single pass to collect all unique keys would be better, but
-    # for simplicity and memory safety we just iterate.
-    # Optimization: using set comprehension is slightly faster than loop.
     all_keys = set().union(*(d.keys() for d in data))
-
     arrays = []
     fields = []
-
-    # Pre-allocate pool
     pool = _get_memory_pool()
 
     for key in all_keys:
@@ -62,15 +43,12 @@ def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
 
         try:
             array = pa.array(column_values, memory_pool=pool)
-            # Use nullable=True by default for robustness
             field = pa.field(key, array.type, nullable=True)
         except (pa.ArrowInvalid, pa.ArrowTypeError):
-            # Fallback to string for mixed types
             str_values = [str(v) if v is not None else None for v in column_values]
             array = pa.array(str_values, type=pa.string(), memory_pool=pool)
             field = pa.field(key, pa.string(), nullable=True)
 
-        # Handle all-null columns
         if pa.types.is_null(array.type):
             array = pa.nulls(len(column_values), type=pa.string(), memory_pool=pool)
             field = pa.field(key, pa.string(), nullable=True)
@@ -82,22 +60,38 @@ def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
 
 
 def convert_column_type(column: pa.Array, target_type: pa.DataType, column_name: str | None = None) -> pa.Array:
-    """Casts a single column to the target type, handling errors by nulling."""
-    if column.type == target_type:
+    """Casts a single column to the target type, handling errors gracefully."""
+    if column.type.equals(target_type):
         return column
 
     try:
-        return pc.cast(column, target_type)
+        return pc.cast(column, target_type, safe=True)
     except (ValueError, TypeError, pa.ArrowInvalid):
-        logger.warning('Cast failed for column %s to %s, filling nulls', column_name or '<unknown>', target_type)
-        return pa.nulls(len(column), type=target_type, memory_pool=_get_memory_pool())
+        pass
+
+    try:
+        return pc.cast(column, target_type, safe=False)
+    except (ValueError, TypeError, pa.ArrowInvalid):
+        pass
+
+    if (pa.types.is_string(column.type) or pa.types.is_large_string(column.type)) and (
+        pa.types.is_timestamp(target_type) or pa.types.is_date(target_type)
+    ):
+        with contextlib.suppress(Exception):
+            pass
+
+    logger.warning(
+        'Cast failed for column %s (%s -> %s). Filling with NULLs.',
+        column_name or '<unknown>',
+        column.type,
+        target_type,
+    )
+    return pa.nulls(len(column), type=target_type, memory_pool=_get_memory_pool())
 
 
 def convert_table_types(table: pa.Table, target_schema: pa.Schema) -> pa.Table:
-    """Convert PyArrow Table to match target schema, casting types and adding missing columns."""
     if table.schema.equals(target_schema):
         return table
-
     return _convert_table_types_internal(table, target_schema)
 
 
@@ -120,7 +114,6 @@ def _convert_table_types_internal(table: pa.Table, target_schema: pa.Schema) -> 
                     pa.field(field.name, new_array.type, nullable=field.nullable, metadata=field.metadata)
                 )
         else:
-            # Add missing column as nulls
             null_array = pa.nulls(len(table), type=field.type, memory_pool=_get_memory_pool())
             new_arrays.append(null_array)
             new_fields.append(field)
@@ -133,10 +126,8 @@ def create_record_batches_from_dicts(
 ) -> Iterator[pa.RecordBatch]:
     """Convert iterator of dicts to PyArrow RecordBatches with specified batch size."""
     batch = []
-
     for item in data_iterator:
         batch.append(item)
-
         if len(batch) >= batch_size:
             table = create_arrow_table_from_data(batch)
             batches = table.to_batches(max_chunksize=batch_size)

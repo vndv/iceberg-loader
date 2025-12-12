@@ -54,6 +54,7 @@ dev = [
   "pytest-cov>=4.0",
   "pre-commit>=3.5.0",
   "twine>=5.0.0",
+  "tox>=4.32.0",
 ]
 
 [project.urls]
@@ -115,6 +116,35 @@ exclude_lines = [
 line-length = 120
 indent-width = 4
 target-version = "py310"
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".git-rewrite",
+  ".hg",
+  ".ipynb_checkpoints",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".pyenv",
+  ".pytest_cache",
+  ".pytype",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  ".vscode",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "site-packages",
+  "venv",
+  "examples",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "N", "TID", "S", "C4", "PIE", "RET", "PTH", "RUF"]
