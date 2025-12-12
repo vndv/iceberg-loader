@@ -160,6 +160,27 @@ config = LoaderConfig(table_properties=custom_props, write_mode="append")
 load_data_to_iceberg(..., config=config)
 ```
 
+### Override Default Table Properties Globally
+
+Built-in defaults live in `iceberg_loader.core.config.TABLE_PROPERTIES` (format version, Parquet compression, commit retries). To tweak them, copy the dictionary, override keys, and pass into `LoaderConfig`:
+
+```python
+from pyiceberg.catalog import load_catalog
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
+from iceberg_loader.core.config import TABLE_PROPERTIES
+
+catalog = load_catalog("default")
+
+custom_properties = {**TABLE_PROPERTIES, "write.parquet.compression-codec": "gzip"}
+
+config = LoaderConfig(
+    write_mode="append",
+    table_properties=custom_properties,
+)
+
+load_data_to_iceberg(table_data, ("default", "events"), catalog, config=config)
+```
+
 ### Maintenance Helper
 
 ```python

@@ -35,9 +35,8 @@ uv pip install "iceberg-loader[all]"
 ## Quickstart
 
 ```python
-import pyarrow as pa
-from pyiceberg.catalog import load_catalog
-from iceberg_loader import LoaderConfig, load_data_to_iceberg, create_arrow_table_from_data
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
+from iceberg_loader.utils.arrow import create_arrow_table_from_data
 
 catalog = load_catalog("default")
 table_id = ("default", "comparison_complex_json")
