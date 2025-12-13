@@ -111,7 +111,7 @@ def _convert_table_types_internal(table: pa.Table, target_schema: pa.Schema) -> 
                 new_array = convert_column_type(column, field.type, field.name)
                 new_arrays.append(new_array)
                 new_fields.append(
-                    pa.field(field.name, new_array.type, nullable=field.nullable, metadata=field.metadata)
+                    pa.field(field.name, new_array.type, nullable=field.nullable, metadata=field.metadata),
                 )
         else:
             null_array = pa.nulls(len(table), type=field.type, memory_pool=_get_memory_pool())
@@ -122,7 +122,8 @@ def _convert_table_types_internal(table: pa.Table, target_schema: pa.Schema) -> 
 
 
 def create_record_batches_from_dicts(
-    data_iterator: Iterator[dict[str, Any]], batch_size: int = 10000
+    data_iterator: Iterator[dict[str, Any]],
+    batch_size: int = 10000,
 ) -> Iterator[pa.RecordBatch]:
     """Convert iterator of dicts to PyArrow RecordBatches with specified batch size."""
     batch = []

@@ -5,6 +5,7 @@ import pyarrow as pa
 from pyiceberg.exceptions import NoSuchTableError
 
 from iceberg_loader import IcebergLoader
+from iceberg_loader.core.config import LoaderConfig
 
 
 def test_load_ipc_stream() -> None:
@@ -28,10 +29,12 @@ def test_load_ipc_stream() -> None:
     loader = IcebergLoader(mock_catalog)
     expected_iceberg_schema = loader.schema_manager._arrow_to_iceberg(schema)
     mock_table.schema.return_value = expected_iceberg_schema
+
+    config = LoaderConfig(write_mode='append')
     result = loader.load_ipc_stream(
         stream_source=sink,
         table_identifier=('default', 'streaming_test'),
-        write_mode='append',
+        config=config,
     )
 
     mock_catalog.create_table.assert_called_once()

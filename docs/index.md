@@ -2,7 +2,7 @@
 
 A convenience wrapper around [PyIceberg](https://py.iceberg.apache.org/) that simplifies data loading into Apache Iceberg tables. PyArrow-first, handles messy JSON, schema evolution, idempotent replace, upsert, batching, and streaming out of the box.
 
-> **Status:** Actively developed and under testing. PRs are welcome!  
+> **Status:** Actively developed and under testing. PRs are welcome!
 > Currently tested against Hive Metastore; REST Catalog support is planned.
 
 ## Features
@@ -190,6 +190,27 @@ table = catalog.load_table(("db", "users"))
 expire_snapshots(table, keep_last=2)
 ```
 
+### Adding Load Timestamp
+
+You can automatically add a timestamp column (e.g. `_load_dttm`) to every row to track when it was loaded. This is useful for ETL audit trails or partitioning by load time.
+
+```python
+from datetime import datetime
+
+# Will add column '_load_dttm' with current time
+config = LoaderConfig(
+    write_mode="append",
+    load_timestamp=datetime.now()
+)
+
+# You can also customize the column name
+config_custom = LoaderConfig(
+    write_mode="append",
+    load_timestamp=datetime(2025, 1, 1),
+    load_ts_col="etl_ts"
+)
+```
+
 ---
 
 ## LoaderConfig Reference
@@ -203,6 +224,8 @@ expire_snapshots(table, keep_last=2)
 | `commit_interval` | `int` | `0` | Commit every N batches (0 = single transaction) |
 | `join_cols` | `list[str] \| None` | `None` | Merge keys for upsert |
 | `table_properties` | `dict \| None` | `None` | Custom Iceberg table properties |
+| `load_timestamp` | `datetime \| None` | `None` | If set, adds `_load_dttm` column with this value |
+| `load_ts_col` | `str` | `'_load_dttm'` | Name of the load timestamp column |
 
 ---
 
@@ -217,97 +240,11 @@ def load_batches_to_iceberg(
     batch_iterator: Iterator[pa.RecordBatch] | pa.RecordBatchReader,
     table_identifier: tuple[str, str],
     catalog: Catalog,
-    write_mode: Literal['overwrite', 'append', 'upsert'] = 'overwrite',
-    partition_col: str | None = None,
-    replace_filter: str | None = None,
-    schema_evolution: bool = False,
-    table_properties: dict[str, Any] | None = None,
-    commit_interval: int = 0,
-    join_cols: list[str] | None = None,
+    config: LoaderConfig | None = None,
 ) -> dict[str, Any]
 ```
 
-#### Parameters
-
-**`batch_iterator`** *(Iterator[pa.RecordBatch] | pa.RecordBatchReader)*
-
-- Iterator or reader that returns PyArrow RecordBatch objects
-- Can be a generator, list of batches, or `pa.RecordBatchReader`
-- Enables processing large volumes of data without loading the entire dataset into memory
-
-**`table_identifier`** *(tuple[str, str])*
-
-- Table identifier in the format `(namespace, table_name)`
-- Example: `("my_database", "my_table")`
-- If the table doesn't exist, it will be created automatically
-
-**`catalog`** *(Catalog)*
-
-- PyIceberg catalog instance (from `pyiceberg.catalog.load_catalog()`)
-- Manages metadata and connection to the table storage
-- Supports Hive, REST, Glue, and other catalog types
-
-**`write_mode`** *(Literal['overwrite', 'append', 'upsert'], default='overwrite')*
-
-- Data write mode:
-  - `'overwrite'`: First batch overwrites the table, subsequent batches are appended
-  - `'append'`: All batches are appended to existing data
-  - `'upsert'`: Merge operation (update/insert) based on `join_cols`
-- Can be combined with `replace_filter` for idempotent writes (only for `'append'`)
-
-**`partition_col`** *(str | None, default=None)*
-
-- Column name (and optional transform) for table partitioning
-- Used only when creating a new table
-- Supported syntax:
-  - `"col_name"` (Identity transform)
-  - `"year(col_name)"`
-  - `"month(col_name)"`
-  - `"day(col_name)"`
-  - `"hour(col_name)"`
-  - `"bucket(N, col_name)"` (e.g., `"bucket(16, id)"`)
-  - `"truncate(W, col_name)"` (e.g., `"truncate(4, name)"`)
-
-**`replace_filter`** *(str | None, default=None)*
-
-- SQL-like filter for idempotent writes (works only with `write_mode='append'`)
-- Deletes existing rows matching the filter before the first write
-- Example: `"event_date == '2023-01-01'"` or `"year == 2023 AND month == 1"`
-- Used for safe partition reloading
-
-**`join_cols`** *(list[str] | None, default=None)*
-
-- List of column names to use as keys for upsert operations
-- Required when `write_mode='upsert'`
-- Example: `["id"]` or `["user_id", "date"]`
-
-**`schema_evolution`** *(bool, default=False)*
-
-- Enables automatic table schema evolution
-- When `True`: new columns from incoming data are automatically added to the table
-- When `False`: incoming data must match the existing schema
-- When schema changes, buffer is flushed and committed
-
-**`table_properties`** *(dict[str, Any] | None, default=None)*
-
-- Additional Iceberg table properties
-- Applied only when creating a new table
-- Examples:
-  ```python
-  {
-      'write.parquet.compression-codec': 'zstd',
-      'write.metadata.compression-codec': 'gzip',
-      'history.expire.min-snapshots-to-keep': 10
-  }
-  ```
-
-**`commit_interval`** *(int, default=0)*
-
-- Transaction commit frequency (number of batches)
-- `0`: all batches are written in a single transaction (default)
-- `> 0`: commit is performed every N batches
-- Useful for long data streams to manage memory and create checkpoints
-- Example: `commit_interval=100` will create a snapshot every 100 batches
+All load parameters (write_mode, partition_col, replace_filter, join_cols, schema_evolution, commit_interval, table_properties) are passed **only** via `LoaderConfig`. See the table in **LoaderConfig Reference** above.
 
 #### Return Value
 
@@ -317,9 +254,10 @@ Dictionary with loading results:
     'rows_loaded': int,
     'batches_processed': int,
     'write_mode': str,
-    'partition_col': str | None,
-    'schema_evolution': bool,
-    'commit_interval': int
+    'partition_col': str,
+    'table_location': str,
+    'snapshot_id': int | str,
+    'new_table_created': bool,
 }
 ```
 
@@ -336,7 +274,7 @@ result = load_batches_to_iceberg(
     batch_iterator=generate_batches(),
     table_identifier=("db", "table"),
     catalog=catalog,
-    write_mode="append"
+    config=LoaderConfig(write_mode="append")
 )
 ```
 
@@ -346,8 +284,10 @@ result = load_batches_to_iceberg(
     batch_iterator=large_batch_stream,
     table_identifier=("db", "large_table"),
     catalog=catalog,
-    commit_interval=50,
-    schema_evolution=True
+    config=LoaderConfig(
+        commit_interval=50,
+        schema_evolution=True
+    )
 )
 ```
 
@@ -357,9 +297,11 @@ result = load_batches_to_iceberg(
     batch_iterator=daily_batches,
     table_identifier=("db", "events"),
     catalog=catalog,
-    write_mode="append",
-    replace_filter="event_date == '2023-12-09'",
-    partition_col="event_date"
+    config=LoaderConfig(
+        write_mode="append",
+        replace_filter="event_date == '2023-12-09'",
+        partition_col="event_date"
+    )
 )
 ```
 

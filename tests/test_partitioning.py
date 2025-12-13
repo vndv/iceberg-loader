@@ -28,7 +28,7 @@ def iceberg_schema(schema_manager: SchemaManager) -> IcebergSchema:
             pa.field('id', pa.int64()),
             pa.field('ts', pa.timestamp('us')),
             pa.field('name', pa.string()),
-        ]
+        ],
     )
     return schema_manager._arrow_to_iceberg(arrow_schema)
 

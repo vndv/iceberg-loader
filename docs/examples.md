@@ -18,6 +18,7 @@ Then run examples from the same `examples/` directory (see commands below). With
 | Example | Description |
 |---------|-------------|
 | [`load_with_commits.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_with_commits.py) | Commit interval for long streams |
+| [`load_batches.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_batches.py) | Loading data in batches using `load_batches_to_iceberg` |
 | [`load_upsert.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_upsert.py) | Upsert (merge) by key columns |
 | [`advanced_scenarios.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/advanced_scenarios.py) | Schema evolution, custom types, partitioning |
 | [`load_complex_json.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_complex_json.py) | Messy JSON handling |
@@ -40,6 +41,7 @@ cd examples
 
 # Core
 python load_with_commits.py
+python load_batches.py
 python load_upsert.py
 python advanced_scenarios.py
 python load_complex_json.py
@@ -54,6 +56,7 @@ With [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv run python load_with_commits.py
+uv run python load_batches.py
 uv run python load_upsert.py
 uv run python advanced_scenarios.py
 uv run python load_complex_json.py
@@ -65,6 +68,31 @@ uv run python maintenance_example.py
 ---
 
 ## Example Highlights
+
+### Loading Data in Batches
+
+Load data from an iterator of RecordBatches:
+
+```python
+import pyarrow as pa
+from iceberg_loader import LoaderConfig, load_batches_to_iceberg
+
+def generate_batches():
+    for i in range(10):
+        data = {
+            'id': list(range(i * 100, (i + 1) * 100)),
+            'name': [f'Item_{j}' for j in range(100)],
+        }
+        yield pa.RecordBatch.from_pydict(data)
+
+config = LoaderConfig(write_mode="append", schema_evolution=True)
+result = load_batches_to_iceberg(
+    batch_iterator=generate_batches(),
+    table_identifier=("db", "items"),
+    catalog=catalog,
+    config=config,
+)
+```
 
 ### Commit Interval (Streaming)
 
@@ -109,7 +137,7 @@ endpoint_configs = {
 for endpoint in endpoints:
     # Use specific config or default to append
     current_config = endpoint_configs.get(endpoint, LoaderConfig(write_mode='append'))
-    
+
     load_data_to_iceberg(
         table_data=data,
         table_identifier=('default', endpoint),

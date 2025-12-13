@@ -47,4 +47,3 @@ Consider creating a social preview image (1280x640px) with:
 - Tech stack icons (Python, Apache Iceberg, PyArrow)
 
 Upload it in: Settings → Social Preview → Upload an image
-

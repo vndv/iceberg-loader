@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.9.16,<0.10.0"]
+build-backend = "uv_build"
 
 [project]
 name = "iceberg-loader"
-dynamic = ["version"]
+version = "0.0.7"
 description = 'A convenience wrapper around PyIceberg for simplified data loading into Apache Iceberg tables'
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,13 +35,13 @@ dependencies = [
 
 [project.optional-dependencies]
 hive = [
-  "pyiceberg[hive]>=0.6.0",
+  "pyiceberg[hive]>=0.7.1",
 ]
 s3 = [
-  "pyiceberg[s3fs]>=0.6.0",
+  "pyiceberg[s3fs]>=0.7.1",
 ]
 all = [
-  "pyiceberg[hive,s3fs,pyiceberg-core]>=0.6.0",
+  "pyiceberg[hive,s3fs,pyiceberg-core]>=0.7.1",
 ]
 test = [
   "pytest>=7.0",
@@ -57,6 +57,45 @@ dev = [
   "tox>=4.32.0",
 ]
 
+[dependency-groups]
+test = [
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+]
+dev = [
+  "ruff>=0.5.0",
+  "mypy>=1.10.0",
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+  "pre-commit>=3.5.0",
+  "twine>=5.0.0",
+  "tox>=4.32.0",
+]
+
+[tool.tox]
+requires = ["tox>=4"]
+isolated_build = true
+env_list = ["3.14", "3.13", "3.12", "3.11", "3.10"]
+
+[tool.tox.env]
+description = "Run tests"
+runner = "uv-venv-lock-runner"
+uv_sync_flags = ["--all-extras"]
+package = "wheel"
+extras = ["test"]
+commands = [
+    ["pytest", "{posargs}"]
+]
+
+[tool.tox.envs.lint]
+description = "Lint source code"
+extras = ["dev"]
+commands = [
+    ["ruff", "check", "."],
+    ["ruff", "format", "--check", "."],
+    ["mypy", "src/iceberg_loader", "tests"]
+]
+
 [project.urls]
 Homepage = "https://github.com/vndvtech/iceberg-loader"
 Documentation = "https://github.com/vndvtech/iceberg-loader"
@@ -64,30 +103,9 @@ Repository = "https://github.com/vndvtech/iceberg-loader"
 "Bug Tracker" = "https://github.com/vndvtech/iceberg-loader/issues"
 Changelog = "https://github.com/vndvtech/iceberg-loader/releases"
 
-[tool.hatch.version]
-path = "src/iceberg_loader/__about__.py"
-
-[tool.hatch.envs.default]
-features = ["all"]
-dependencies = [
-  "pytest>=7.0",
-  "pytest-cov>=4.0",
-  "ruff>=0.5.0",
-  "mypy>=1.10.0",
-  "pre-commit>=3.5.0",
-]
-[tool.hatch.envs.default.scripts]
-test = "pytest {args:tests}"
-lint = "ruff check"
-format = "ruff format"
-
-[tool.hatch.envs.types]
-extra-dependencies = [
-  "mypy>=1.0.0",
-]
-
-[tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/iceberg_loader tests}"
+[tool.uv.build-backend]
+module-name = "iceberg_loader"
+module-root = "src"
 
 [tool.coverage.run]
 source_pkgs = ["iceberg_loader", "tests"]
@@ -153,13 +171,21 @@ ignore = ["BLE001", "UP017"]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "S101",
+    "S301",
     "D103",
+    "SLF001",
+    "S311",
+    "D101",
+    "D102",
     "PLR2004",
 ]
-"examples/*" = [
+"docs/examples/*" = [
     "D103",
-    "T201",
     "S101",
+    "S311",
+    "D101",
+    "D102",
+    "T201",
 ]
 
 [tool.ruff.format]
@@ -178,6 +204,10 @@ follow_imports = "normal"
 show_error_codes = true
 exclude = ["examples/"]
 
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
@@ -186,15 +216,3 @@ warn_return_any = false
 [[tool.mypy.overrides]]
 module = ["pyarrow", "pyarrow.*", "pyiceberg.*", "requests"]
 ignore_missing_imports = true
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/iceberg_loader"]
-include = [
-  "src/iceberg_loader/py.typed",
-]
-
-[tool.hatch.build.targets.sdist]
-include = [
-  "src/iceberg_loader/py.typed",
-]
-
