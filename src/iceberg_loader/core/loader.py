@@ -142,6 +142,14 @@ class IcebergLoader:
             if combined_table is None:
                 combined_table = pa.Table.from_batches(batches)
 
+            # Add load timestamp if configured
+            if effective_config.load_timestamp:
+                timestamp_array = pa.array(
+                    [effective_config.load_timestamp] * len(combined_table),
+                    type=pa.timestamp('us'),
+                )
+                combined_table = combined_table.append_column(effective_config.load_ts_col, timestamp_array)
+
             # 1. Ensure Table Exists
             if table is None:
                 table = self.schema_manager.ensure_table_exists(
@@ -152,6 +160,12 @@ class IcebergLoader:
                 )
                 if table.current_snapshot() is None:
                     new_table_created = True
+
+            # 1.5 Force schema evolution for load timestamp
+            if effective_config.load_timestamp:
+                ts_field = combined_table.schema.field(effective_config.load_ts_col)
+                mini_schema = pa.schema([ts_field])
+                self.schema_manager.evolve_schema_if_needed(table, mini_schema)
 
             # 2. Schema Evolution
             if effective_schema_evolution:

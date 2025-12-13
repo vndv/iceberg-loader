@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 
 import pyarrow as pa
@@ -283,3 +283,37 @@ def test_load_data_properties_isolation(
     props2 = args2.kwargs['properties']
     assert props2.get('prop2') == '2'
     assert 'prop1' not in props2
+
+
+def test_load_data_with_load_timestamp(
+    loader: IcebergLoader,
+    mock_catalog: MagicMock,
+    arrow_table: pa.Table,
+    table_identifier: tuple[str, str],
+) -> None:
+    mock_table = MagicMock()
+    mock_catalog.load_table.return_value = mock_table
+    expected_iceberg_schema = loader.schema_manager._arrow_to_iceberg(arrow_table.schema)
+    mock_table.schema.return_value = expected_iceberg_schema
+
+    load_ts = datetime(2025, 1, 1, 12, 0, 0)
+    config = LoaderConfig(write_mode='append', load_timestamp=load_ts)
+
+    # Mock get_arrow_schema to simulate that the table schema has been updated
+    # because the real mock_table object won't update its state after update_schema()
+    extended_schema = arrow_table.schema.append(pa.field(config.load_ts_col, pa.timestamp('us')))
+
+    with patch.object(loader.schema_manager, 'get_arrow_schema', return_value=extended_schema):
+        loader.load_data(arrow_table, table_identifier, config=config)
+
+        txn = mock_table.transaction.return_value.__enter__.return_value
+        txn.append.assert_called()
+
+        # Check that appended data has the new column
+        appended_table = txn.append.call_args[0][0]
+        assert config.load_ts_col in appended_table.column_names
+
+        # Check value
+        ts_column = appended_table[config.load_ts_col]
+        # pyarrow timestamp is in microseconds by default for us
+        assert ts_column[0].as_py() == load_ts

@@ -56,6 +56,30 @@ config = LoaderConfig(write_mode="append", partition_col="signup_date", schema_e
 load_data_to_iceberg(arrow_table, table_id, catalog, config=config)
 ```
 
+## Which function to use?
+
+| Function                     | Use when...                                                  | Input Format                      |
+|------------------------------|--------------------------------------------------------------|-----------------------------------|
+| `load_data_to_iceberg`       | You have a single `pa.Table` in memory.                      | `pyarrow.Table`                   |
+| `load_batches_to_iceberg`    | You have a generator/iterator of batches (memory efficient). | Iterator of `pyarrow.RecordBatch` |
+| `load_ipc_stream_to_iceberg` | You are reading from an Arrow IPC stream file/socket.        | File-like object or path          |
+
+## Preparing Data
+
+Use helpers to convert Python dictionaries to Arrow format (handling messy types automatically):
+
+```python
+from iceberg_loader.utils.arrow import create_arrow_table_from_data, create_record_batches_from_dicts
+
+# 1. Convert list of dicts -> pa.Table
+arrow_table = create_arrow_table_from_data(data_list)
+
+# 2. Convert iterator of dicts -> Iterator[pa.RecordBatch]
+batches = create_record_batches_from_dicts(data_generator(), batch_size=10000)
+```
+
+Alternatively, use standard PyArrow conversion: `pa.Table.from_pylist(data)`.
+
 
 ## Contributing
 

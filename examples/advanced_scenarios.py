@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from catalog import get_catalog
 from pyiceberg.exceptions import NoSuchTableError
@@ -28,8 +29,21 @@ def scenario_initial_append(catalog):
     ]
     table_arrow = create_arrow_table_from_data(data_day_1)
 
-    config = LoaderConfig(write_mode='append', partition_col='ts', schema_evolution=True)
+    load_ts = datetime.now()
+    config = LoaderConfig(
+        write_mode='append',
+        partition_col='day(dttm)',
+        schema_evolution=True,
+        load_timestamp=load_ts,
+        load_ts_col='dttm',
+    )
     load_data_to_iceberg(table_data=table_arrow, table_identifier=table_id, catalog=catalog, config=config)
+
+    table = catalog.load_table(table_id)
+    arrow_df = table.scan().to_arrow()
+    if '_load_dttm' in arrow_df.column_names:
+        logger.info("Verified: '_load_dttm' column exists and populated.")
+
     verify_table(catalog, table_id, expected_rows=2)
 
 

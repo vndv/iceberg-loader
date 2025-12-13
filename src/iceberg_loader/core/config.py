@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Literal
 
 TABLE_PROPERTIES = {
@@ -22,3 +23,5 @@ class LoaderConfig:
     table_properties: dict[str, Any] | None = None
     commit_interval: int = 0
     join_cols: list[str] | None = None
+    load_timestamp: datetime | None = None
+    load_ts_col: str = '_load_dttm'
