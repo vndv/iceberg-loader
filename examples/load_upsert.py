@@ -30,7 +30,7 @@ def run_upsert_example():
             'id': [1, 2, 3],
             'name': ['Alice', 'Bob', 'Charlie'],
             'updated_at': [datetime.now(), datetime.now(), datetime.now()],
-        }
+        },
     )
 
     config_overwrite = LoaderConfig(write_mode='overwrite')
@@ -50,7 +50,7 @@ def run_upsert_example():
             'id': [2, 4],
             'name': ['Bob Updated', 'David'],
             'updated_at': [datetime.now(), datetime.now()],
-        }
+        },
     )
 
     config_upsert = LoaderConfig(write_mode='upsert', join_cols=['id'])

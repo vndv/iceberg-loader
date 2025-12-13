@@ -12,7 +12,7 @@
 A convenience wrapper around [PyIceberg](https://py.iceberg.apache.org/) that simplifies data loading into Apache Iceberg tables. PyArrow-first, handles messy JSON, schema evolution, idempotent replace, upsert, batching, and streaming out of the box.
 
 
-> **Status:** Actively developed and under testing. PRs are welcome!  
+> **Status:** Actively developed and under testing. PRs are welcome!
 > Currently tested against Hive Metastore; REST Catalog support is planned.
 
 ## Why iceberg-loader?

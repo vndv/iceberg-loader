@@ -2,7 +2,7 @@
 
 A convenience wrapper around [PyIceberg](https://py.iceberg.apache.org/) that simplifies data loading into Apache Iceberg tables. PyArrow-first, handles messy JSON, schema evolution, idempotent replace, upsert, batching, and streaming out of the box.
 
-> **Status:** Actively developed and under testing. PRs are welcome!  
+> **Status:** Actively developed and under testing. PRs are welcome!
 > Currently tested against Hive Metastore; REST Catalog support is planned.
 
 ## Features
@@ -336,7 +336,7 @@ result = load_batches_to_iceberg(
     batch_iterator=generate_batches(),
     table_identifier=("db", "table"),
     catalog=catalog,
-    write_mode="append"
+    config=LoaderConfig(write_mode="append")
 )
 ```
 
@@ -346,8 +346,10 @@ result = load_batches_to_iceberg(
     batch_iterator=large_batch_stream,
     table_identifier=("db", "large_table"),
     catalog=catalog,
-    commit_interval=50,
-    schema_evolution=True
+    config=LoaderConfig(
+        commit_interval=50,
+        schema_evolution=True
+    )
 )
 ```
 
@@ -357,9 +359,11 @@ result = load_batches_to_iceberg(
     batch_iterator=daily_batches,
     table_identifier=("db", "events"),
     catalog=catalog,
-    write_mode="append",
-    replace_filter="event_date == '2023-12-09'",
-    partition_col="event_date"
+    config=LoaderConfig(
+        write_mode="append",
+        replace_filter="event_date == '2023-12-09'",
+        partition_col="event_date"
+    )
 )
 ```
 

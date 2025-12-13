@@ -55,7 +55,7 @@ _requires() {
   awk -v pkg="$pkg" '
     BEGIN { inside_pkg=0; inside_deps=0 }
     /^\[\[package\]\]/ { inside_pkg=0; inside_deps=0 }
-    /^name = "/ { 
+    /^name = "/ {
         match($0, /"([^"]+)"/, arr);
         if (arr[1] == pkg) inside_pkg=1;
     }
@@ -99,7 +99,7 @@ _project_deps() {
   sed -n '/^\[project.dependencies\]/,/^\[/p' "$pyproject" | \
   grep -v '^\[' | grep -v '^$' | \
   sed 's/[" ,]//g' | \
-  sed -E 's/([a-zA-Z0-9_-]+)(.*)/  \1 \2/' 
+  sed -E 's/([a-zA-Z0-9_-]+)(.*)/  \1 \2/'
 
   echo
   echo "$B OPTIONAL/DEV DEPENDENCIES $R"
@@ -109,7 +109,7 @@ _project_deps() {
   grep -v '\[project.dependencies\]' | \
   grep -v '^\[' | grep -v '^$' | \
   sed 's/[" ,]//g' | \
-  sed -E 's/([a-zA-Z0-9_-]+)(.*)/  \1 \2/' 
+  sed -E 's/([a-zA-Z0-9_-]+)(.*)/  \1 \2/'
 }
 
 # --- Diff Logic ---
@@ -123,24 +123,24 @@ deps_diff () {
 
   # Basic diff implementation for uv.lock
   # We look for lines changing 'version = "..."'
-  
+
   git diff -U2 --word-diff=plain --word-diff-regex='[^. ]*' "$@" $lockfile |
     # Clean up output
     grep -v 'description = ' |
     grep '(^|[^{])version = .*(-\]|\+\})' -EC1 |
     sed -nr '
       /name = /{ s///; s/.*/'"$B&$R"'/; h; }
-      /version = /{ 
-         s///; 
+      /version = /{
+         s///;
          # Colorize removals
          s/\[-([^]]*)-\]/'"$RED\1$R"'/g
          # Colorize additions
          s/\{\+([^+]+)\+\}/'"$GREEN\1$R"'/g
-         H; 
-         x; 
-         s/\n/ /g; 
+         H;
+         x;
+         s/\n/ /g;
          s/"//g;
-         p; 
+         p;
       }
     '
   echo
@@ -187,7 +187,7 @@ if (( ! ${#pkg} )); then
 else
   # Find package version in lockfile
   pkg_ver=$(awk -v pkg="$pkg" '$0 ~ "^name = \"" pkg "\"" { found=1; next } found && $0 ~ "^version =" { split($0,a,"\""); print a[2]; exit }' $lockfile)
-  
+
   if [[ -z "$pkg_ver" ]]; then
      if (( quiet )); then exit 1; fi
      error "Package $B$pkg$R is not found in $lockfile"

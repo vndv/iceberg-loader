@@ -5,7 +5,7 @@ import pyarrow as pa
 import pytest
 from pyiceberg.exceptions import NoSuchTableError
 
-from iceberg_loader.core.config import TABLE_PROPERTIES
+from iceberg_loader.core.config import TABLE_PROPERTIES, LoaderConfig
 from iceberg_loader.iceberg_loader import IcebergLoader, load_data_to_iceberg
 
 
@@ -50,14 +50,18 @@ def test_init_custom_properties(mock_catalog: MagicMock) -> None:
 
 
 def test_load_data_create_table(
-    loader: IcebergLoader, mock_catalog: MagicMock, arrow_table: pa.Table, table_identifier: tuple[str, str]
+    loader: IcebergLoader,
+    mock_catalog: MagicMock,
+    arrow_table: pa.Table,
+    table_identifier: tuple[str, str],
 ) -> None:
     mock_table = MagicMock()
     mock_catalog.load_table.side_effect = [NoSuchTableError, mock_table]
     expected_iceberg_schema = loader.schema_manager._arrow_to_iceberg(arrow_table.schema)
     mock_table.schema.return_value = expected_iceberg_schema
 
-    result = loader.load_data(arrow_table, table_identifier, partition_col='date_col')
+    config = LoaderConfig(partition_col='date_col')
+    result = loader.load_data(arrow_table, table_identifier, config=config)
 
     mock_catalog.create_table.assert_called_once()
     assert result['rows_loaded'] == 2
@@ -65,14 +69,18 @@ def test_load_data_create_table(
 
 
 def test_load_data_append_existing(
-    loader: IcebergLoader, mock_catalog: MagicMock, arrow_table: pa.Table, table_identifier: tuple[str, str]
+    loader: IcebergLoader,
+    mock_catalog: MagicMock,
+    arrow_table: pa.Table,
+    table_identifier: tuple[str, str],
 ) -> None:
     mock_table = MagicMock()
     mock_catalog.load_table.return_value = mock_table
     expected_iceberg_schema = loader.schema_manager._arrow_to_iceberg(arrow_table.schema)
     mock_table.schema.return_value = expected_iceberg_schema
 
-    loader.load_data(arrow_table, table_identifier, write_mode='append')
+    config = LoaderConfig(write_mode='append')
+    loader.load_data(arrow_table, table_identifier, config=config)
 
     mock_catalog.create_table.assert_not_called()
     mock_table.transaction.assert_called_once()
@@ -80,20 +88,27 @@ def test_load_data_append_existing(
 
 
 def test_load_data_overwrite_existing(
-    loader: IcebergLoader, mock_catalog: MagicMock, arrow_table: pa.Table, table_identifier: tuple[str, str]
+    loader: IcebergLoader,
+    mock_catalog: MagicMock,
+    arrow_table: pa.Table,
+    table_identifier: tuple[str, str],
 ) -> None:
     mock_table = MagicMock()
     mock_catalog.load_table.return_value = mock_table
     expected_iceberg_schema = loader.schema_manager._arrow_to_iceberg(arrow_table.schema)
     mock_table.schema.return_value = expected_iceberg_schema
 
-    loader.load_data(arrow_table, table_identifier, write_mode='overwrite')
+    config = LoaderConfig(write_mode='overwrite')
+    loader.load_data(arrow_table, table_identifier, config=config)
 
     mock_table.transaction.return_value.__enter__.return_value.overwrite.assert_called()
 
 
 def test_load_data_append_replace_filter(
-    loader: IcebergLoader, mock_catalog: MagicMock, arrow_table: pa.Table, table_identifier: tuple[str, str]
+    loader: IcebergLoader,
+    mock_catalog: MagicMock,
+    arrow_table: pa.Table,
+    table_identifier: tuple[str, str],
 ) -> None:
     mock_table = MagicMock()
     mock_catalog.load_table.return_value = mock_table
@@ -101,21 +116,26 @@ def test_load_data_append_replace_filter(
     mock_table.schema.return_value = expected_iceberg_schema
 
     txn = mock_table.transaction.return_value.__enter__.return_value
-    loader.load_data(arrow_table, table_identifier, write_mode='append', replace_filter="date_col == '2023-01-01'")
+    config = LoaderConfig(write_mode='append', replace_filter="date_col == '2023-01-01'")
+    loader.load_data(arrow_table, table_identifier, config=config)
 
     txn.delete.assert_called_once_with("date_col == '2023-01-01'")
     txn.append.assert_called_once()
 
 
 def test_load_data_upsert(
-    loader: IcebergLoader, mock_catalog: MagicMock, arrow_table: pa.Table, table_identifier: tuple[str, str]
+    loader: IcebergLoader,
+    mock_catalog: MagicMock,
+    arrow_table: pa.Table,
+    table_identifier: tuple[str, str],
 ) -> None:
     mock_table = MagicMock()
     mock_catalog.load_table.return_value = mock_table
     expected_iceberg_schema = loader.schema_manager._arrow_to_iceberg(arrow_table.schema)
     mock_table.schema.return_value = expected_iceberg_schema
 
-    loader.load_data(arrow_table, table_identifier, write_mode='upsert', join_cols=['id'])
+    config = LoaderConfig(write_mode='upsert', join_cols=['id'])
+    loader.load_data(arrow_table, table_identifier, config=config)
 
     mock_table.upsert.assert_called_once()
     call_args = mock_table.upsert.call_args
@@ -130,7 +150,7 @@ def test_public_api_wrapper(arrow_table: pa.Table, table_identifier: tuple[str, 
 
         load_data_to_iceberg(arrow_table, table_identifier, mock_catalog)
 
-        mock_loader_cls.assert_called_with(mock_catalog, None, default_config=None)
+        mock_loader_cls.assert_called_with(mock_catalog, default_config=None)
         mock_instance.load_data.assert_called_once()
 
 
@@ -142,7 +162,7 @@ def test_field_ids_preserved_on_evolution(loader: IcebergLoader, arrow_schema: p
             pa.field('name', pa.string()),
             pa.field('date_col', pa.date32()),
             pa.field('extra', pa.string()),
-        ]
+        ],
     )
     evolved = loader.schema_manager._arrow_to_iceberg(extended_arrow, existing_schema=base_schema)
     ids = {field.name: field.field_id for field in evolved.fields}
@@ -166,11 +186,11 @@ def test_stream_batches_schema_evolution_midstream(table_identifier: tuple[str, 
     mock_table.current_snapshot.return_value = MagicMock(snapshot_id=123)
     mock_table.location.return_value = 's3://test/path'
 
+    config = LoaderConfig(write_mode='append', schema_evolution=True)
     result = loader.load_data_batches(
         batch_iterator=iter([batch1, batch2]),
         table_identifier=table_identifier,
-        write_mode='append',
-        schema_evolution=True,
+        config=config,
     )
 
     assert result['rows_loaded'] == 2
@@ -178,13 +198,17 @@ def test_stream_batches_schema_evolution_midstream(table_identifier: tuple[str, 
 
 
 def test_load_data_batches_empty_iterator(loader: IcebergLoader, table_identifier: tuple[str, str]) -> None:
-    result = loader.load_data_batches(batch_iterator=iter([]), table_identifier=table_identifier, write_mode='append')
+    config = LoaderConfig(write_mode='append')
+    result = loader.load_data_batches(batch_iterator=iter([]), table_identifier=table_identifier, config=config)
     assert result['rows_loaded'] == 0
     assert result['batches_processed'] == 0
 
 
 def test_overwrite_branch_append_path(
-    loader: IcebergLoader, mock_catalog: MagicMock, arrow_table: pa.Table, table_identifier: tuple[str, str]
+    loader: IcebergLoader,
+    mock_catalog: MagicMock,
+    arrow_table: pa.Table,
+    table_identifier: tuple[str, str],
 ) -> None:
     mock_table = MagicMock()
     mock_catalog.load_table.return_value = mock_table
@@ -192,6 +216,70 @@ def test_overwrite_branch_append_path(
     mock_table.schema.return_value = expected_iceberg_schema
 
     txn = mock_table.transaction.return_value.__enter__.return_value
-    loader.load_data(arrow_table, table_identifier, write_mode='append', replace_filter=None)
+    config = LoaderConfig(write_mode='append', replace_filter=None)
+    loader.load_data(arrow_table, table_identifier, config=config)
     txn.overwrite.assert_not_called()
     txn.append.assert_called()
+
+
+def test_load_data_create_table_with_properties_override(
+    loader: IcebergLoader,
+    mock_catalog: MagicMock,
+    arrow_table: pa.Table,
+    table_identifier: tuple[str, str],
+) -> None:
+    mock_table = MagicMock()
+    mock_catalog.load_table.side_effect = [NoSuchTableError, mock_table]
+    custom_props = {'custom.prop': 'value'}
+
+    config = LoaderConfig(table_properties=custom_props)
+    loader.load_data(
+        arrow_table,
+        table_identifier,
+        config=config,
+    )
+
+    mock_catalog.create_table.assert_called_once()
+    call_args = mock_catalog.create_table.call_args
+    assert call_args.kwargs['properties']['custom.prop'] == 'value'
+    for k, v in TABLE_PROPERTIES.items():
+        assert call_args.kwargs['properties'][k] == v
+
+
+def test_load_data_properties_isolation(
+    loader: IcebergLoader,
+    mock_catalog: MagicMock,
+    arrow_table: pa.Table,
+    table_identifier: tuple[str, str],
+) -> None:
+    mock_table1 = MagicMock()
+    mock_catalog.load_table.side_effect = [NoSuchTableError, mock_table1]
+
+    # Call 1
+    config1 = LoaderConfig(table_properties={'prop1': '1'})
+    loader.load_data(
+        arrow_table,
+        table_identifier,
+        config=config1,
+    )
+
+    args1 = mock_catalog.create_table.call_args
+    assert args1.kwargs['properties']['prop1'] == '1'
+
+    # Reset
+    mock_catalog.create_table.reset_mock()
+    mock_table2 = MagicMock()
+    mock_catalog.load_table.side_effect = [NoSuchTableError, mock_table2]
+
+    # Call 2
+    config2 = LoaderConfig(table_properties={'prop2': '2'})
+    loader.load_data(
+        arrow_table,
+        table_identifier,
+        config=config2,
+    )
+
+    args2 = mock_catalog.create_table.call_args
+    props2 = args2.kwargs['properties']
+    assert props2.get('prop2') == '2'
+    assert 'prop1' not in props2

@@ -11,12 +11,12 @@ Thank you for your interest in contributing to the project! This guide will help
    ```
 
 2. **Install dependencies**
-   
+
    We use [Hatch](https://hatch.pypa.io/latest/) for environment management:
    ```bash
    pip install hatch
    ```
-   
+
    **Note**: This project requires Python 3.10-3.14. If you encounter installation issues:
    - Verify your Python version: `python --version`
    - Use Python 3.12 for best compatibility
@@ -103,11 +103,11 @@ logger = logging.getLogger(__name__)
 def load_data(table_id: tuple[str, str], data: Any) -> dict[str, Any]:
     """
     Load data into an Iceberg table.
-    
+
     Args:
         table_id: Table identifier as (namespace, table_name)
         data: Data to load
-        
+
     Returns:
         Dictionary with loading results
     """
@@ -132,10 +132,13 @@ def test_load_data_with_schema_evolution():
     # Arrange
     catalog = get_mock_catalog()
     data = create_test_data()
-    
+
     # Act
-    result = load_data_to_iceberg(data, ("db", "table"), catalog, schema_evolution=True)
-    
+    from iceberg_loader import LoaderConfig
+
+    config = LoaderConfig(schema_evolution=True)
+    result = load_data_to_iceberg(data, ("db", "table"), catalog, config=config)
+
     # Assert
     assert result['rows_loaded'] == 3
 ```
@@ -158,7 +161,7 @@ def test_load_data_with_schema_evolution():
    - Include test results
    - Add screenshots/logs if relevant
 
-4. **Keep PRs Focused**: 
+4. **Keep PRs Focused**:
    - One feature/fix per PR
    - Break large changes into smaller PRs
    - Rebase on main before submitting

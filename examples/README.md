@@ -34,7 +34,7 @@ secret_key: minio123
 
 ```bash
 uv init --python3.14
-uv add "iceberg-loader[all]" 
+uv add "iceberg-loader[all]"
 ```
 
 ## Running Examples

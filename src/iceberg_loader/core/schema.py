@@ -44,6 +44,7 @@ class SchemaManager:
         table_identifier: tuple[str, str],
         arrow_schema: pa.Schema,
         partition_col: str | None = None,
+        table_properties: dict[str, Any] | None = None,
     ) -> Any:
         """Loads the table, or creates it if it doesn't exist."""
         try:
@@ -55,7 +56,7 @@ class SchemaManager:
             adjusted_arrow_schema = self._adjust_schema_for_partitioning(arrow_schema, partition_col)
 
             iceberg_schema = self._arrow_to_iceberg(adjusted_arrow_schema)
-            self._create_table(table_identifier, iceberg_schema, partition_col)
+            self._create_table(table_identifier, iceberg_schema, partition_col, table_properties)
             return self.catalog.load_table(table_identifier)
 
     def evolve_schema_if_needed(self, table: Any, batch_schema: pa.Schema) -> bool:
@@ -98,8 +99,10 @@ class SchemaManager:
         table_identifier: tuple[str, str],
         schema: Schema,
         partition_col: str | None = None,
+        properties: dict[str, Any] | None = None,
     ) -> None:
         partition_spec = None
+        final_properties = properties if properties is not None else self.table_properties
 
         if partition_col:
             partition_spec = self._create_partition_spec(schema, partition_col)
@@ -109,13 +112,13 @@ class SchemaManager:
                 identifier=table_identifier,
                 schema=schema,
                 partition_spec=partition_spec,
-                properties=self.table_properties,
+                properties=final_properties,
             )
         else:
             self.catalog.create_table(
                 identifier=table_identifier,
                 schema=schema,
-                properties=self.table_properties,
+                properties=final_properties,
             )
 
     def _adjust_schema_for_partitioning(self, arrow_schema: pa.Schema, partition_col: str | None) -> pa.Schema:
@@ -180,7 +183,8 @@ class SchemaManager:
                 # If we promoted schema in _adjust_schema_for_partitioning, this should pass.
                 # If not, try to be helpful.
                 if transform in ('year', 'month', 'day', 'hour') and isinstance(
-                    field.field_type, DateType | TimestampType | TimestamptzType
+                    field.field_type,
+                    DateType | TimestampType | TimestamptzType,
                 ):
                     pass  # Good
                 else:
@@ -201,7 +205,9 @@ class SchemaManager:
             )
         except ValueError as e:
             logger.warning(
-                "Failed to create partition spec for '%s': %s. Creating table without partition.", partition_col, e
+                "Failed to create partition spec for '%s': %s. Creating table without partition.",
+                partition_col,
+                e,
             )
             return None
 
@@ -306,7 +312,7 @@ class SchemaManager:
                     name=field.name,
                     field_type=iceberg_type,
                     required=not field.nullable,
-                )
+                ),
             )
 
         return Schema(*fields)
