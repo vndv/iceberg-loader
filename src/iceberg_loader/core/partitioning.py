@@ -46,15 +46,19 @@ def parse_partition_transform(partition_str: str) -> tuple[str, str, int | None]
         return func_name, args[0], None
 
     if func_name in ('bucket', 'truncate'):
-        if len(args) != 2:
-            raise ValueError(f"Transform '{func_name}' expects 2 arguments (param, col), got {len(args)}")
-        try:
-            param = int(args[0])
-        except ValueError as e:
-            raise ValueError(f"First argument for '{func_name}' must be an integer, got '{args[0]}'") from e
-        return func_name, args[1], param
+        return _parse_param_transform(func_name, args)
 
     raise ValueError(f'Unknown partition transform: {func_name}')
+
+
+def _parse_param_transform(func_name: str, args: list[str]) -> tuple[str, str, int]:
+    if len(args) != 2:
+        raise ValueError(f"Transform '{func_name}' expects 2 arguments (param, col), got {len(args)}")
+    try:
+        param = int(args[0])
+    except ValueError as e:
+        raise ValueError(f"First argument for '{func_name}' must be an integer, got '{args[0]}'") from e
+    return func_name, args[1], param
 
 
 def get_transform_impl(transform_name: str, param: int | None) -> Transform:

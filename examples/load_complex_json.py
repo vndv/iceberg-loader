@@ -10,20 +10,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 
-def drop_if_exists(catalog, table_id):
-    from pyiceberg.exceptions import NoSuchTableError
-
-    try:
-        catalog.drop_table(table_id)
-        logger.info('Dropped existing table %s', table_id)
-    except NoSuchTableError:
-        return
-
-
 def run_complex_load():
     catalog = get_catalog()
     table_id = ('default', 'complex_json_test')
-    # drop_if_exists(catalog, table_id)
 
     data = [
         {'id': 1, 'complex_field': {'a': 1, 'b': 'nested'}},

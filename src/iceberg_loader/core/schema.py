@@ -144,57 +144,10 @@ class SchemaManager:
     def _create_partition_spec(self, schema: Schema, partition_col: str) -> PartitionSpec | None:
         """
         Parses the partition string and creates a PartitionSpec.
-        Supports:
-        - "col" (Identity)
-        - "year(col)", "month(col)", "day(col)", "hour(col)"
-        - "bucket(N, col)"
-        - "truncate(W, col)"
         """
         try:
             transform, source_col, param = parse_partition_transform(partition_col)
             field = schema.find_field(source_col)
-
-            # Heuristic for new partition field ID: max existing ID + 1
-            max_field_id = max(f.field_id for f in schema.fields)
-            partition_field_id = max_field_id + 1
-
-            partition_name = f'{source_col}_{transform}' if transform != 'identity' else source_col
-            if transform == 'bucket':
-                partition_name = f'{source_col}_bucket_{param}'
-            elif transform == 'truncate':
-                partition_name = f'{source_col}_trunc_{param}'
-            elif transform == 'void':
-                partition_name = f'{source_col}_void'
-
-            transform_impl = get_transform_impl(transform, param)
-
-            # Validation: Check if transform supports the source type
-            if is_timestamp_identity(transform, field.field_type):
-                logger.warning(
-                    "Identity partition on timestamp column '%s' can create too many partitions. "
-                    'Use day(...) or hour(...).',
-                    source_col,
-                )
-
-            if not transform_impl.can_transform(field.field_type) and not transform_supports_type(
-                transform,
-                field.field_type,
-            ):
-                logger.warning(
-                    "Transform '%s' may not support type '%s' for column '%s'. Partitioning might fail.",
-                    transform,
-                    field.field_type,
-                    source_col,
-                )
-
-            return PartitionSpec(
-                PartitionField(
-                    source_id=field.field_id,
-                    field_id=partition_field_id,
-                    transform=transform_impl,
-                    name=partition_name,
-                ),
-            )
         except ValueError as e:
             logger.warning(
                 "Failed to create partition spec for '%s': %s. Creating table without partition.",
@@ -202,6 +155,57 @@ class SchemaManager:
                 e,
             )
             return None
+
+        # Heuristic for new partition field ID: max existing ID + 1
+        max_field_id = max(f.field_id for f in schema.fields)
+        partition_field_id = max_field_id + 1
+
+        partition_name = self._get_partition_name(transform, source_col, param)
+        transform_impl = get_transform_impl(transform, param)
+
+        self._validate_partition_transform(transform, source_col, field.field_type, transform_impl)
+
+        return PartitionSpec(
+            PartitionField(
+                source_id=field.field_id,
+                field_id=partition_field_id,
+                transform=transform_impl,
+                name=partition_name,
+            ),
+        )
+
+    def _get_partition_name(self, transform: str, source_col: str, param: int | None) -> str:
+        if transform == 'identity':
+            return source_col
+        if transform == 'bucket':
+            return f'{source_col}_bucket_{param}'
+        if transform == 'truncate':
+            return f'{source_col}_trunc_{param}'
+        if transform == 'void':
+            return f'{source_col}_void'
+        return f'{source_col}_{transform}'
+
+    def _validate_partition_transform(
+        self,
+        transform: str,
+        source_col: str,
+        field_type: Any,
+        transform_impl: Any,
+    ) -> None:
+        if is_timestamp_identity(transform, field_type):
+            logger.warning(
+                "Identity partition on timestamp column '%s' can create too many partitions. "
+                'Use day(...) or hour(...).',
+                source_col,
+            )
+
+        if not transform_impl.can_transform(field_type) and not transform_supports_type(transform, field_type):
+            logger.warning(
+                "Transform '%s' may not support type '%s' for column '%s'. Partitioning might fail.",
+                transform,
+                field_type,
+                source_col,
+            )
 
     def _arrow_to_iceberg(self, arrow_schema: pa.Schema, existing_schema: Schema | None = None) -> Schema:
         """

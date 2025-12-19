@@ -22,12 +22,13 @@ class WriteStrategy(ABC):
             data: The PyArrow table to write.
             is_first_write: True if this is the first batch/transaction in the stream.
         """
+        raise NotImplementedError
 
 
 class AppendStrategy(WriteStrategy):
     """Simply appends data to the table."""
 
-    def write(self, table: Any, data: pa.Table, is_first_write: bool) -> None:
+    def write(self, table: Any, data: pa.Table, _is_first_write: bool) -> None:
         with table.transaction() as txn:
             txn.append(data)
 
@@ -74,7 +75,7 @@ class UpsertStrategy(WriteStrategy):
     def __init__(self, join_cols: list[str] | None = None):
         self.join_cols = join_cols
 
-    def write(self, table: Any, data: pa.Table, is_first_write: bool) -> None:
+    def write(self, table: Any, data: pa.Table, _is_first_write: bool) -> None:
         # Upsert handles its own transaction logic internally in PyIceberg
         logger.debug('Upserting data...')
         table.upsert(df=data, join_cols=self.join_cols)
