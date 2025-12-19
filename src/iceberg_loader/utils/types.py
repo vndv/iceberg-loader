@@ -67,6 +67,8 @@ class TypeRegistry:
 
         if pa.types.is_integer(arrow_type):
             bit_width = getattr(arrow_type, 'bit_width', None)
+            if pa.types.is_unsigned_integer(arrow_type) and bit_width == 64:
+                return DecimalType(20, 0)
             if bit_width and bit_width > 32:
                 return LongType()
             return IntegerType()
