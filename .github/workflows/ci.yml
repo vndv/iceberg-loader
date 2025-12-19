@@ -10,7 +10,39 @@ on:
     - cron: '0 0 * * 1'
 
 jobs:
+  consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: consistency
+          version: "latest"
+          python-version: "3.12"
+      - name: Check version alignment
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          pyproject_version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+
+          about = Path("src/iceberg_loader/__about__.py").read_text()
+          prefix = "__version__ = '"
+          start = about.index(prefix) + len(prefix)
+          end = about.index("'", start)
+          about_version = about[start:end]
+
+          if pyproject_version != about_version:
+              raise SystemExit(f"Version mismatch: pyproject.toml={pyproject_version}, __about__.py={about_version}")
+          PY
+      - name: Verify uv.lock is up to date
+        run: uv lock --locked
+
   lint:
+    needs: consistency
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -106,3 +138,21 @@ jobs:
           name: dist-${{ matrix.python-version }}
           path: dist/*
           if-no-files-found: error
+
+  examples-smoke:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-suffix: examples
+          version: "latest"
+          python-version: "3.12"
+      - name: Install deps
+        run: uv sync --group dev --all-extras
+      - name: Run smoke example test
+        run: uv run python -m pytest tests/test_examples_smoke.py

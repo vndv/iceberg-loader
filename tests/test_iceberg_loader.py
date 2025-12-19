@@ -317,3 +317,28 @@ def test_load_data_with_load_timestamp(
         ts_column = appended_table[config.load_ts_col]
         # pyarrow timestamp is in microseconds by default for us
         assert ts_column[0].as_py() == load_ts
+
+
+def test_load_timestamp_with_partition_transform(
+    loader: IcebergLoader,
+    mock_catalog: MagicMock,
+    arrow_table: pa.Table,
+    table_identifier: tuple[str, str],
+) -> None:
+    mock_table = MagicMock()
+    mock_catalog.load_table.side_effect = [NoSuchTableError, mock_table]
+    expected_iceberg_schema = loader.schema_manager._arrow_to_iceberg(arrow_table.schema)
+    mock_table.schema.return_value = expected_iceberg_schema
+
+    load_ts = datetime(2025, 1, 1, 12, 0, 0)
+    config = LoaderConfig(write_mode='append', load_timestamp=load_ts, partition_col='day(_load_dttm)')
+    extended_schema = arrow_table.schema.append(pa.field(config.load_ts_col, pa.timestamp('us')))
+
+    with patch.object(loader.schema_manager, 'get_arrow_schema', return_value=extended_schema):
+        result = loader.load_data(arrow_table, table_identifier, config=config)
+
+    create_kwargs = mock_catalog.create_table.call_args.kwargs
+    partition_spec = create_kwargs.get('partition_spec')
+    assert partition_spec is not None
+    assert partition_spec.fields[0].name == '_load_dttm_day'
+    assert result['partition_col'] == 'day(_load_dttm)'

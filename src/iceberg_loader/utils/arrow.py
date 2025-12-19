@@ -23,6 +23,25 @@ def create_arrow_table_from_data(data: list[dict[str, Any]]) -> pa.Table:
     return _create_table_native(data)
 
 
+def _create_field_for_column(
+    key: str,
+    column_values: list[str | None],
+    pool: pa.MemoryPool,
+) -> tuple[pa.Array, pa.Field]:
+    try:
+        array = pa.array(column_values, memory_pool=pool)
+        field = pa.field(key, array.type, nullable=True)
+        return array, field
+    except (pa.ArrowInvalid, pa.ArrowTypeError):
+        # Fallback to string if type inference fails
+        pass
+
+    str_values = [str(v) if v is not None else None for v in column_values]
+    array = pa.array(str_values, type=pa.string(), memory_pool=pool)
+    field = pa.field(key, pa.string(), nullable=True)
+    return array, field
+
+
 def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
     if not data:
         return pa.Table.from_arrays([], schema=pa.schema([]))
@@ -41,13 +60,7 @@ def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
             else:
                 column_values.append(str(value) if value is not None else None)
 
-        try:
-            array = pa.array(column_values, memory_pool=pool)
-            field = pa.field(key, array.type, nullable=True)
-        except (pa.ArrowInvalid, pa.ArrowTypeError):
-            str_values = [str(v) if v is not None else None for v in column_values]
-            array = pa.array(str_values, type=pa.string(), memory_pool=pool)
-            field = pa.field(key, pa.string(), nullable=True)
+        array, field = _create_field_for_column(key, column_values, pool)
 
         if pa.types.is_null(array.type):
             array = pa.nulls(len(column_values), type=pa.string(), memory_pool=pool)

@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "iceberg-loader"
-version = "0.0.7"
+version = "0.1.0"
 description = 'A convenience wrapper around PyIceberg for simplified data loading into Apache Iceberg tables'
 readme = "README.md"
 requires-python = ">=3.10"

@@ -45,14 +45,14 @@ catalog = load_catalog("default")
 table_id = ("default", "comparison_complex_json")
 
 data = [
-    {"id": 1, "complex_field": {"a": 1, "b": "nested"}},
-    {"id": 2, "complex_field": {"a": 2, "b": "another", "c": [1, 2]}},
-    {"id": 3, "complex_field": [1, 2, 3]},
+    {"id": 1, "complex_field": {"a": 1, "b": "nested"}, "signup_date": "2023-01-01"},
+    {"id": 2, "complex_field": {"a": 2, "b": "another", "c": [1, 2]}, "signup_date": "2023-01-02"},
+    {"id": 3, "complex_field": [1, 2, 3], "signup_date": "2023-01-02"},
 ]
 
 arrow_table = create_arrow_table_from_data(data)
 
-config = LoaderConfig(write_mode="append", partition_col="signup_date", schema_evolution=True)
+config = LoaderConfig(write_mode="append", partition_col="day(signup_date)", schema_evolution=True)
 load_data_to_iceberg(arrow_table, table_id, catalog, config=config)
 ```
 
@@ -79,6 +79,27 @@ batches = create_record_batches_from_dicts(data_generator(), batch_size=10000)
 ```
 
 Alternatively, use standard PyArrow conversion: `pa.Table.from_pylist(data)`.
+
+## Public API & Stability
+
+- Public surface: `LoaderConfig`, `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg`.
+- Everything else is internal and may change without notice; always pass options via `LoaderConfig`.
+- Avoid legacy positional arguments—use the `config` parameter only.
+- LoaderConfig validates partition expressions and rejects unsafe combos (e.g., `replace_filter` with `upsert`, identity partition on `_load_dttm`).
+
+## How we version
+
+- Semantic Versioning starting at `0.1.x`: **MINOR** for compatible features, **PATCH** for fixes, **MAJOR** for breaking API changes.
+- Breaking changes only happen on the public surface noted above.
+- Prefer partition transforms for timestamps (`day(ts)`, `hour(ts)`), especially when using `load_timestamp`.
+
+## Release checklist
+
+- Bump version in `pyproject.toml` and `src/iceberg_loader/__about__.py` (they must match).
+- Update `RELEASE.md` with highlights and breaking notes.
+- Run `uv lock --locked` and commit `uv.lock` if it changes.
+- Run `uv run ruff check .`, `uv run mypy src/iceberg_loader tests`, and `uv run python -m pytest`.
+- Tag and push (`git tag -a vX.Y.Z ...`), then let CI publish.
 
 
 ## Contributing

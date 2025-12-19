@@ -1,4 +1,3 @@
-import re
 from typing import Any
 
 import pyarrow as pa
@@ -6,23 +5,14 @@ from pyiceberg.catalog import Catalog
 from pyiceberg.exceptions import NoSuchTableError
 from pyiceberg.partitioning import PartitionField, PartitionSpec
 from pyiceberg.schema import Schema
-from pyiceberg.transforms import (
-    BucketTransform,
-    DayTransform,
-    HourTransform,
-    IdentityTransform,
-    MonthTransform,
-    Transform,
-    TruncateTransform,
-    YearTransform,
-)
-from pyiceberg.types import (
-    DateType,
-    NestedField,
-    TimestampType,
-    TimestamptzType,
-)
+from pyiceberg.types import NestedField
 
+from iceberg_loader.core.partitioning import (
+    get_transform_impl,
+    is_timestamp_identity,
+    parse_partition_transform,
+    transform_supports_type,
+)
 from iceberg_loader.services.logging import logger
 from iceberg_loader.utils.types import get_arrow_type, get_iceberg_type
 
@@ -131,7 +121,7 @@ class SchemaManager:
             return arrow_schema
 
         try:
-            transform, source_col, _ = self._parse_partition_transform(partition_col)
+            transform, source_col, _ = parse_partition_transform(partition_col)
         except ValueError:
             return arrow_schema
 
@@ -154,46 +144,19 @@ class SchemaManager:
     def _create_partition_spec(self, schema: Schema, partition_col: str) -> PartitionSpec | None:
         """
         Parses the partition string and creates a PartitionSpec.
-        Supports:
-        - "col" (Identity)
-        - "year(col)", "month(col)", "day(col)", "hour(col)"
-        - "bucket(N, col)"
-        - "truncate(W, col)"
         """
         try:
-            transform, source_col, param = self._parse_partition_transform(partition_col)
+            transform, source_col, param = parse_partition_transform(partition_col)
             field = schema.find_field(source_col)
 
             # Heuristic for new partition field ID: max existing ID + 1
             max_field_id = max(f.field_id for f in schema.fields)
             partition_field_id = max_field_id + 1
 
-            partition_name = f'{source_col}_{transform}' if transform != 'identity' else source_col
-            if transform == 'bucket':
-                partition_name = f'{source_col}_bucket_{param}'
-            elif transform == 'truncate':
-                partition_name = f'{source_col}_trunc_{param}'
-            elif transform == 'void':
-                partition_name = f'{source_col}_void'
+            partition_name = self._get_partition_name(transform, source_col, param)
+            transform_impl = get_transform_impl(transform, param)
 
-            transform_impl = self._get_transform_impl(transform, param)
-
-            # Validation: Check if transform supports the source type
-            if not transform_impl.can_transform(field.field_type):
-                # If we promoted schema in _adjust_schema_for_partitioning, this should pass.
-                # If not, try to be helpful.
-                if transform in ('year', 'month', 'day', 'hour') and isinstance(
-                    field.field_type,
-                    DateType | TimestampType | TimestamptzType,
-                ):
-                    pass  # Good
-                else:
-                    logger.warning(
-                        "Transform '%s' may not support type '%s' for column '%s'. Partitioning might fail.",
-                        transform,
-                        field.field_type,
-                        source_col,
-                    )
+            self._validate_partition_transform(transform, source_col, field.field_type, transform_impl)
 
             return PartitionSpec(
                 PartitionField(
@@ -211,68 +174,38 @@ class SchemaManager:
             )
             return None
 
-    def _parse_partition_transform(self, partition_str: str) -> tuple[str, str, int | None]:
-        """
-        Parses strings like:
-        - "ts" -> ("identity", "ts", None)
-        - "month(ts)" -> ("month", "ts", None)
-        - "bucket(16, id)" -> ("bucket", "id", 16)
-        - "truncate(4, name)" -> ("truncate", "name", 4)
-        """
-        partition_str = partition_str.strip()
+    def _get_partition_name(self, transform: str, source_col: str, param: int | None) -> str:
+        if transform == 'identity':
+            return source_col
+        if transform == 'bucket':
+            return f'{source_col}_bucket_{param}'
+        if transform == 'truncate':
+            return f'{source_col}_trunc_{param}'
+        if transform == 'void':
+            return f'{source_col}_void'
+        return f'{source_col}_{transform}'
 
-        # Regex for "func(col)" or "func(param, col)"
-        # Group 1: Function name (optional)
-        # Group 2: Args inside parens
-        match = re.match(r'(\w+)\((.+)\)', partition_str)
+    def _validate_partition_transform(
+        self,
+        transform: str,
+        source_col: str,
+        field_type: Any,
+        transform_impl: Any,
+    ) -> None:
+        if is_timestamp_identity(transform, field_type):
+            logger.warning(
+                "Identity partition on timestamp column '%s' can create too many partitions. "
+                'Use day(...) or hour(...).',
+                source_col,
+            )
 
-        if not match:
-            # Identity case: "ts"
-            return 'identity', partition_str, None
-
-        func_name = match.group(1).lower()
-        args_str = match.group(2)
-        args = [a.strip() for a in args_str.split(',')]
-
-        if func_name in ('year', 'month', 'day', 'hour', 'void'):
-            if len(args) != 1:
-                raise ValueError(f"Transform '{func_name}' expects 1 argument, got {len(args)}")
-            return func_name, args[0], None
-
-        if func_name in ('bucket', 'truncate'):
-            if len(args) != 2:
-                raise ValueError(f"Transform '{func_name}' expects 2 arguments (param, col), got {len(args)}")
-            try:
-                param = int(args[0])
-            except ValueError as e:
-                raise ValueError(f"First argument for '{func_name}' must be an integer, got '{args[0]}'") from e
-            return func_name, args[1], param
-
-        # Fallback or unknown transform, treat as identity if simple column?
-        # Or strict error? Let's raise error for unknown transforms.
-        raise ValueError(f'Unknown partition transform: {func_name}')
-
-    def _get_transform_impl(self, transform_name: str, param: int | None) -> Transform:
-        if transform_name == 'identity':
-            return IdentityTransform()
-        if transform_name == 'year':
-            return YearTransform()
-        if transform_name == 'month':
-            return MonthTransform()
-        if transform_name == 'day':
-            return DayTransform()
-        if transform_name == 'hour':
-            return HourTransform()
-        if transform_name == 'bucket':
-            if param is None:
-                raise ValueError('Bucket transform requires a width parameter')
-            return BucketTransform(num_buckets=param)
-        if transform_name == 'truncate':
-            if param is None:
-                raise ValueError('Truncate transform requires a width parameter')
-            return TruncateTransform(width=param)
-        # Void not commonly used but supported
-        raise ValueError(f'Unsupported transform implementation: {transform_name}')
+        if not transform_impl.can_transform(field_type) and not transform_supports_type(transform, field_type):
+            logger.warning(
+                "Transform '%s' may not support type '%s' for column '%s'. Partitioning might fail.",
+                transform,
+                field_type,
+                source_col,
+            )
 
     def _arrow_to_iceberg(self, arrow_schema: pa.Schema, existing_schema: Schema | None = None) -> Schema:
         """

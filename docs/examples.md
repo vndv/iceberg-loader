@@ -180,9 +180,17 @@ load_data_to_iceberg(data_with_new_columns, ("db", "table"), catalog, config=con
 Create partitioned tables with transform expressions:
 
 ```python
+from datetime import datetime
+
 config = LoaderConfig(
     write_mode="append",
     partition_col="month(event_date)",  # or day(), year(), bucket(16, id), etc.
 )
 load_data_to_iceberg(data, ("db", "events"), catalog, config=config)
+
+ingestion_config = LoaderConfig(
+    write_mode="append",
+    load_timestamp=datetime.now(),
+    partition_col="hour(_load_dttm)",
+)
 ```

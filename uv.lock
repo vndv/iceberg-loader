@@ -744,7 +744,7 @@ wheels = [
 
 [[package]]
 name = "iceberg-loader"
-version = "0.0.6"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "pyarrow" },

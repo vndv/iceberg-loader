@@ -53,7 +53,7 @@ from iceberg_loader import LoaderConfig, load_data_to_iceberg
 catalog = load_catalog("default")
 data = pa.Table.from_pydict({"id": [1, 2], "signup_date": ["2023-01-01", "2023-01-02"]})
 
-config = LoaderConfig(write_mode="append", partition_col="signup_date", schema_evolution=True)
+config = LoaderConfig(write_mode="append", partition_col="day(signup_date)", schema_evolution=True)
 load_data_to_iceberg(data, ("db", "users"), catalog, config=config)
 ```
 
@@ -77,7 +77,7 @@ data = pa.Table.from_pydict({
     "signup_date": ["2023-01-01", "2023-01-01", "2023-01-02"]
 })
 
-config = LoaderConfig(write_mode="append", partition_col="signup_date", schema_evolution=True)
+config = LoaderConfig(write_mode="append", partition_col="day(signup_date)", schema_evolution=True)
 result = load_data_to_iceberg(
     table_data=data,
     table_identifier=("my_db", "my_table"),
@@ -86,7 +86,7 @@ result = load_data_to_iceberg(
 )
 
 print(result)
-# {'rows_loaded': 3, 'write_mode': 'append', 'partition_col': 'signup_date', ...}
+# {'rows_loaded': 3, 'write_mode': 'append', 'partition_col': 'day(signup_date)', ...}
 ```
 
 ### Idempotent Load (Replace Partition)
@@ -97,7 +97,7 @@ Safely re-load data for a specific day (avoiding duplicates):
 config = LoaderConfig(
     write_mode="append",
     replace_filter="signup_date == '2023-01-01'",
-    partition_col="signup_date",
+    partition_col="day(signup_date)",
 )
 
 load_data_to_iceberg(table_data=data, table_identifier=("my_db", "my_table"), catalog=catalog, config=config)
@@ -197,17 +197,19 @@ You can automatically add a timestamp column (e.g. `_load_dttm`) to every row to
 ```python
 from datetime import datetime
 
-# Will add column '_load_dttm' with current time
+# Will add column '_load_dttm' with current time and partition by hour
 config = LoaderConfig(
     write_mode="append",
-    load_timestamp=datetime.now()
+    load_timestamp=datetime.now(),
+    partition_col="hour(_load_dttm)",
 )
 
-# You can also customize the column name
+# You can also customize the column name and day-transform it
 config_custom = LoaderConfig(
     write_mode="append",
     load_timestamp=datetime(2025, 1, 1),
-    load_ts_col="etl_ts"
+    load_ts_col="etl_ts",
+    partition_col="day(etl_ts)",
 )
 ```
 
@@ -218,7 +220,7 @@ config_custom = LoaderConfig(
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `write_mode` | `'append'` \| `'overwrite'` \| `'upsert'` | `'overwrite'` | Data write mode |
-| `partition_col` | `str \| None` | `None` | Partition column or transform (e.g., `month(ts)`, `bucket(16,id)`) |
+| `partition_col` | `str \| None` | `None` | Partition column or transform (e.g., `month(ts)`, `bucket(16,id)`); prefer day/hour on timestamps |
 | `replace_filter` | `str \| None` | `None` | SQL-style filter for idempotent loads |
 | `schema_evolution` | `bool` | `False` | Auto-add new columns |
 | `commit_interval` | `int` | `0` | Commit every N batches (0 = single transaction) |
@@ -300,7 +302,7 @@ result = load_batches_to_iceberg(
     config=LoaderConfig(
         write_mode="append",
         replace_filter="event_date == '2023-12-09'",
-        partition_col="event_date"
+        partition_col="day(event_date)"
     )
 )
 ```
@@ -310,6 +312,23 @@ result = load_batches_to_iceberg(
 ## Examples
 
 See the [Examples](examples.md) page for runnable demos covering streaming, upsert, schema evolution, messy JSON, and more.
+
+---
+
+## How we version
+
+- Semantic Versioning from `0.1.x`: MINOR = new compatible features, PATCH = fixes, MAJOR = breaking changes.
+- Public API: `LoaderConfig`, `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg`; other modules are internal.
+- Prefer partition transforms for timestamps (`day(ts)`, `hour(ts)`, `day(_load_dttm)`) to avoid unbounded partition counts.
+- LoaderConfig validates partition expressions and forbids unsafe mixes (e.g., `replace_filter` with `upsert`, identity partition on `_load_dttm`).
+
+## Release checklist
+
+- Align versions in `pyproject.toml` and `src/iceberg_loader/__about__.py`.
+- Update `RELEASE.md` with highlights/breaking changes.
+- Run `uv lock --locked` and commit `uv.lock` if it changes.
+- Run lint (`uv run ruff check .`), types (`uv run mypy src/iceberg_loader tests`), and tests (`uv run python -m pytest`).
+- Tag and push (`git tag -a vX.Y.Z -m "Release X.Y.Z"`), let CI publish.
 
 ---
 
