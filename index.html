@@ -1,0 +1,1457 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Utilities for robust data loading into Apache Iceberg using PyArrow">
+      
+      
+      
+      
+      
+        <link rel="next" href="examples/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>iceberg-loader</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#iceberg-loader" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="iceberg-loader" class="md-header__button md-logo" aria-label="iceberg-loader" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            iceberg-loader
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Home
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/vndvtech/iceberg-loader" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="iceberg-loader" class="md-nav__button md-logo" aria-label="iceberg-loader" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    iceberg-loader
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/vndvtech/iceberg-loader" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#extras" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extras
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quickstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quickstart
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idempotent-load-replace-partition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Idempotent Load (Replace Partition)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#upsert-merge-into" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upsert (Merge Into)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Loading
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stream-loading-arrow-ipc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stream Loading (Arrow IPC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#override-default-table-properties-globally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Override Default Table Properties Globally
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#maintenance-helper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Maintenance Helper
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-load-timestamp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Load Timestamp
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#loaderconfig-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LoaderConfig Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#load_batches_to_iceberg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load_batches_to_iceberg()
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="load_batches_to_iceberg()">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#return-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Return Value
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-we-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How we version
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Release checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Release
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        License
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#extras" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extras
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quickstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quickstart
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idempotent-load-replace-partition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Idempotent Load (Replace Partition)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#upsert-merge-into" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upsert (Merge Into)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Loading
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stream-loading-arrow-ipc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stream Loading (Arrow IPC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#override-default-table-properties-globally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Override Default Table Properties Globally
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#maintenance-helper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Maintenance Helper
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-load-timestamp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Load Timestamp
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#loaderconfig-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LoaderConfig Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#load_batches_to_iceberg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load_batches_to_iceberg()
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="load_batches_to_iceberg()">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#return-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Return Value
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-we-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How we version
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Release checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Release
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        License
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="iceberg-loader">iceberg-loader</h1>
+<p>A convenience wrapper around <a href="https://py.iceberg.apache.org/">PyIceberg</a> that simplifies data loading into Apache Iceberg tables. PyArrow-first, handles messy JSON, schema evolution, idempotent replace, upsert, batching, and streaming out of the box.</p>
+<blockquote>
+<p><strong>Status:</strong> Actively developed and under testing. PRs are welcome!
+Currently tested against Hive Metastore; REST Catalog support is planned.</p>
+</blockquote>
+<h2 id="features">Features</h2>
+<ul>
+<li><strong>Arrow-first:</strong> <code>pa.Table</code>, <code>RecordBatch</code>, IPC.</li>
+<li><strong>Messy JSON friendly:</strong> dict/list/mixed → JSON strings.</li>
+<li><strong>Schema evolution</strong> (opt-in).</li>
+<li><strong>Idempotent replace</strong> (<code>replace_filter</code>) and <strong>upsert</strong>.</li>
+<li><strong>Commit interval</strong> for long streams.</li>
+<li><strong>Maintenance helpers</strong> (expire snapshots).</li>
+</ul>
+<h2 id="install">Install</h2>
+<pre><code class="language-bash">pip install &quot;iceberg-loader[all]&quot;
+</code></pre>
+<p>Or with <a href="https://docs.astral.sh/uv/">uv</a>:</p>
+<pre><code class="language-bash">uv pip install &quot;iceberg-loader[all]&quot;
+</code></pre>
+<h3 id="extras">Extras</h3>
+<table>
+<thead>
+<tr>
+<th>Extra</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hive</code></td>
+<td>Hive Metastore support</td>
+</tr>
+<tr>
+<td><code>s3fs</code></td>
+<td>S3 filesystem support</td>
+</tr>
+<tr>
+<td><code>pyiceberg-core</code></td>
+<td>PyIceberg core</td>
+</tr>
+<tr>
+<td><code>all</code></td>
+<td>All extras</td>
+</tr>
+</tbody>
+</table>
+<h2 id="compatibility">Compatibility</h2>
+<ul>
+<li>Python: 3.10, 3.11, 3.12, 3.13, 3.14</li>
+<li>PyArrow: &gt;= 18.0.0</li>
+<li>PyIceberg: &gt;= 0.7.1</li>
+</ul>
+<hr />
+<h2 id="quickstart">Quickstart</h2>
+<pre><code class="language-python">import pyarrow as pa
+from pyiceberg.catalog import load_catalog
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
+
+catalog = load_catalog(&quot;default&quot;)
+data = pa.Table.from_pydict({&quot;id&quot;: [1, 2], &quot;signup_date&quot;: [&quot;2023-01-01&quot;, &quot;2023-01-02&quot;]})
+
+config = LoaderConfig(write_mode=&quot;append&quot;, partition_col=&quot;day(signup_date)&quot;, schema_evolution=True)
+load_data_to_iceberg(data, (&quot;db&quot;, &quot;users&quot;), catalog, config=config)
+</code></pre>
+<hr />
+<h2 id="usage">Usage</h2>
+<h3 id="basic-example">Basic Example</h3>
+<pre><code class="language-python">import pyarrow as pa
+from pyiceberg.catalog import load_catalog
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
+
+catalog = load_catalog(&quot;default&quot;)
+
+data = pa.Table.from_pydict({
+    &quot;id&quot;: [1, 2, 3],
+    &quot;name&quot;: [&quot;Alice&quot;, &quot;Bob&quot;, &quot;Charlie&quot;],
+    &quot;created_at&quot;: [1672531200000, 1672617600000, 1672704000000],
+    &quot;signup_date&quot;: [&quot;2023-01-01&quot;, &quot;2023-01-01&quot;, &quot;2023-01-02&quot;]
+})
+
+config = LoaderConfig(write_mode=&quot;append&quot;, partition_col=&quot;day(signup_date)&quot;, schema_evolution=True)
+result = load_data_to_iceberg(
+    table_data=data,
+    table_identifier=(&quot;my_db&quot;, &quot;my_table&quot;),
+    catalog=catalog,
+    config=config,
+)
+
+print(result)
+# {'rows_loaded': 3, 'write_mode': 'append', 'partition_col': 'day(signup_date)', ...}
+</code></pre>
+<h3 id="idempotent-load-replace-partition">Idempotent Load (Replace Partition)</h3>
+<p>Safely re-load data for a specific day (avoiding duplicates):</p>
+<pre><code class="language-python">config = LoaderConfig(
+    write_mode=&quot;append&quot;,
+    replace_filter=&quot;signup_date == '2023-01-01'&quot;,
+    partition_col=&quot;day(signup_date)&quot;,
+)
+
+load_data_to_iceberg(table_data=data, table_identifier=(&quot;my_db&quot;, &quot;my_table&quot;), catalog=catalog, config=config)
+</code></pre>
+<h3 id="upsert-merge-into">Upsert (Merge Into)</h3>
+<p>Merge operation (update existing rows, insert new ones) based on key columns. Requires PyIceberg &gt;= 0.7.0.</p>
+<pre><code class="language-python">config = LoaderConfig(write_mode=&quot;upsert&quot;, join_cols=[&quot;id&quot;])
+load_data_to_iceberg(table_data=data, table_identifier=(&quot;my_db&quot;, &quot;my_table&quot;), catalog=catalog, config=config)
+</code></pre>
+<h3 id="batch-loading">Batch Loading</h3>
+<p>For large datasets, use <code>load_batches_to_iceberg</code> with an iterator of RecordBatches:</p>
+<pre><code class="language-python">from iceberg_loader import load_batches_to_iceberg
+
+def batch_generator():
+    for i in range(10):
+        yield some_record_batch
+
+result = load_batches_to_iceberg(
+    batch_iterator=batch_generator(),
+    table_identifier=(&quot;my_db&quot;, &quot;large_table&quot;),
+    catalog=catalog,
+    config=LoaderConfig(write_mode=&quot;append&quot;, commit_interval=100),
+)
+</code></pre>
+<h3 id="stream-loading-arrow-ipc">Stream Loading (Arrow IPC)</h3>
+<p>Load data directly from an Apache Arrow IPC stream:</p>
+<pre><code class="language-python">from iceberg_loader import load_ipc_stream_to_iceberg
+
+result = load_ipc_stream_to_iceberg(
+    stream_source=&quot;data.arrow&quot;,
+    table_identifier=(&quot;my_db&quot;, &quot;stream_table&quot;),
+    catalog=catalog,
+    config=LoaderConfig(write_mode=&quot;append&quot;),
+)
+</code></pre>
+<h3 id="custom-settings">Custom Settings</h3>
+<p>Override default table properties:</p>
+<pre><code class="language-python">custom_props = {
+    'write.parquet.compression-codec': 'snappy',
+    'history.expire.min-snapshots-to-keep': 5,
+}
+
+config = LoaderConfig(table_properties=custom_props, write_mode=&quot;append&quot;)
+load_data_to_iceberg(..., config=config)
+</code></pre>
+<h3 id="override-default-table-properties-globally">Override Default Table Properties Globally</h3>
+<p>Built-in defaults live in <code>iceberg_loader.core.config.TABLE_PROPERTIES</code> (format version, Parquet compression, commit retries). To tweak them, copy the dictionary, override keys, and pass into <code>LoaderConfig</code>:</p>
+<pre><code class="language-python">from pyiceberg.catalog import load_catalog
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
+from iceberg_loader.core.config import TABLE_PROPERTIES
+
+catalog = load_catalog(&quot;default&quot;)
+
+custom_properties = {**TABLE_PROPERTIES, &quot;write.parquet.compression-codec&quot;: &quot;gzip&quot;}
+
+config = LoaderConfig(
+    write_mode=&quot;append&quot;,
+    table_properties=custom_properties,
+)
+
+load_data_to_iceberg(table_data, (&quot;default&quot;, &quot;events&quot;), catalog, config=config)
+</code></pre>
+<h3 id="maintenance-helper">Maintenance Helper</h3>
+<pre><code class="language-python">from iceberg_loader import expire_snapshots
+
+table = catalog.load_table((&quot;db&quot;, &quot;users&quot;))
+expire_snapshots(table, keep_last=2)
+</code></pre>
+<h3 id="adding-load-timestamp">Adding Load Timestamp</h3>
+<p>You can automatically add a timestamp column (e.g. <code>_load_dttm</code>) to every row to track when it was loaded. This is useful for ETL audit trails or partitioning by load time.</p>
+<pre><code class="language-python">from datetime import datetime
+
+# Will add column '_load_dttm' with current time and partition by hour
+config = LoaderConfig(
+    write_mode=&quot;append&quot;,
+    load_timestamp=datetime.now(),
+    partition_col=&quot;hour(_load_dttm)&quot;,
+)
+
+# You can also customize the column name and day-transform it
+config_custom = LoaderConfig(
+    write_mode=&quot;append&quot;,
+    load_timestamp=datetime(2025, 1, 1),
+    load_ts_col=&quot;etl_ts&quot;,
+    partition_col=&quot;day(etl_ts)&quot;,
+)
+</code></pre>
+<hr />
+<h2 id="loaderconfig-reference">LoaderConfig Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>write_mode</code></td>
+<td><code>'append'</code> | <code>'overwrite'</code> | <code>'upsert'</code></td>
+<td><code>'overwrite'</code></td>
+<td>Data write mode</td>
+</tr>
+<tr>
+<td><code>partition_col</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Partition column or transform (e.g., <code>month(ts)</code>, <code>bucket(16,id)</code>); prefer day/hour on timestamps</td>
+</tr>
+<tr>
+<td><code>replace_filter</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>SQL-style filter for idempotent loads</td>
+</tr>
+<tr>
+<td><code>schema_evolution</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Auto-add new columns</td>
+</tr>
+<tr>
+<td><code>commit_interval</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Commit every N batches (0 = single transaction)</td>
+</tr>
+<tr>
+<td><code>join_cols</code></td>
+<td><code>list[str] \| None</code></td>
+<td><code>None</code></td>
+<td>Merge keys for upsert</td>
+</tr>
+<tr>
+<td><code>table_properties</code></td>
+<td><code>dict \| None</code></td>
+<td><code>None</code></td>
+<td>Custom Iceberg table properties</td>
+</tr>
+<tr>
+<td><code>load_timestamp</code></td>
+<td><code>datetime \| None</code></td>
+<td><code>None</code></td>
+<td>If set, adds <code>_load_dttm</code> column with this value</td>
+</tr>
+<tr>
+<td><code>load_ts_col</code></td>
+<td><code>str</code></td>
+<td><code>'_load_dttm'</code></td>
+<td>Name of the load timestamp column</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="api-reference">API Reference</h2>
+<h3 id="load_batches_to_iceberg"><code>load_batches_to_iceberg()</code></h3>
+<p>Main function for loading a stream of batches into an Iceberg table.</p>
+<pre><code class="language-python">def load_batches_to_iceberg(
+    batch_iterator: Iterator[pa.RecordBatch] | pa.RecordBatchReader,
+    table_identifier: tuple[str, str],
+    catalog: Catalog,
+    config: LoaderConfig | None = None,
+) -&gt; dict[str, Any]
+</code></pre>
+<p>All load parameters (write_mode, partition_col, replace_filter, join_cols, schema_evolution, commit_interval, table_properties) are passed <strong>only</strong> via <code>LoaderConfig</code>. See the table in <strong>LoaderConfig Reference</strong> above.</p>
+<h4 id="return-value">Return Value</h4>
+<p>Dictionary with loading results:</p>
+<pre><code class="language-python">{
+    'rows_loaded': int,
+    'batches_processed': int,
+    'write_mode': str,
+    'partition_col': str,
+    'table_location': str,
+    'snapshot_id': int | str,
+    'new_table_created': bool,
+}
+</code></pre>
+<h4 id="usage-examples">Usage Examples</h4>
+<p><strong>Basic stream loading:</strong></p>
+<pre><code class="language-python">def generate_batches():
+    for i in range(100):
+        data = {&quot;id&quot;: [i], &quot;value&quot;: [f&quot;row_{i}&quot;]}
+        yield pa.RecordBatch.from_pydict(data)
+
+result = load_batches_to_iceberg(
+    batch_iterator=generate_batches(),
+    table_identifier=(&quot;db&quot;, &quot;table&quot;),
+    catalog=catalog,
+    config=LoaderConfig(write_mode=&quot;append&quot;)
+)
+</code></pre>
+<p><strong>With commits for memory management:</strong></p>
+<pre><code class="language-python">result = load_batches_to_iceberg(
+    batch_iterator=large_batch_stream,
+    table_identifier=(&quot;db&quot;, &quot;large_table&quot;),
+    catalog=catalog,
+    config=LoaderConfig(
+        commit_interval=50,
+        schema_evolution=True
+    )
+)
+</code></pre>
+<p><strong>Idempotent partition loading:</strong></p>
+<pre><code class="language-python">result = load_batches_to_iceberg(
+    batch_iterator=daily_batches,
+    table_identifier=(&quot;db&quot;, &quot;events&quot;),
+    catalog=catalog,
+    config=LoaderConfig(
+        write_mode=&quot;append&quot;,
+        replace_filter=&quot;event_date == '2023-12-09'&quot;,
+        partition_col=&quot;day(event_date)&quot;
+    )
+)
+</code></pre>
+<hr />
+<h2 id="examples">Examples</h2>
+<p>See the <a href="examples/">Examples</a> page for runnable demos covering streaming, upsert, schema evolution, messy JSON, and more.</p>
+<hr />
+<h2 id="how-we-version">How we version</h2>
+<ul>
+<li>Semantic Versioning from <code>0.1.x</code>: MINOR = new compatible features, PATCH = fixes, MAJOR = breaking changes.</li>
+<li>Public API: <code>LoaderConfig</code>, <code>load_data_to_iceberg</code>, <code>load_batches_to_iceberg</code>, <code>load_ipc_stream_to_iceberg</code>; other modules are internal.</li>
+<li>Prefer partition transforms for timestamps (<code>day(ts)</code>, <code>hour(ts)</code>, <code>day(_load_dttm)</code>) to avoid unbounded partition counts.</li>
+<li>LoaderConfig validates partition expressions and forbids unsafe mixes (e.g., <code>replace_filter</code> with <code>upsert</code>, identity partition on <code>_load_dttm</code>).</li>
+</ul>
+<h2 id="release-checklist">Release checklist</h2>
+<ul>
+<li>Align versions in <code>pyproject.toml</code> and <code>src/iceberg_loader/__about__.py</code>.</li>
+<li>Update <code>RELEASE.md</code> with highlights/breaking changes.</li>
+<li>Run <code>uv lock --locked</code> and commit <code>uv.lock</code> if it changes.</li>
+<li>Run lint (<code>uv run ruff check .</code>), types (<code>uv run mypy src/iceberg_loader tests</code>), and tests (<code>uv run python -m pytest</code>).</li>
+<li>Tag and push (<code>git tag -a vX.Y.Z -m "Release X.Y.Z"</code>), let CI publish.</li>
+</ul>
+<hr />
+<h2 id="development">Development</h2>
+<p>This project uses <a href="https://hatch.pypa.io/">Hatch</a> as build backend. For local workflows prefer <a href="https://docs.astral.sh/uv/">uv</a>.</p>
+<h3 id="run-tests">Run Tests</h3>
+<pre><code class="language-bash">uv run python -m pytest
+</code></pre>
+<h3 id="linting">Linting</h3>
+<pre><code class="language-bash">uv run ruff check
+uv run ruff format --check
+uv run mypy
+</code></pre>
+<h3 id="release">Release</h3>
+<pre><code class="language-bash">hatch build
+twine check dist/*
+twine upload --repository testpypi dist/*
+twine upload dist/*
+</code></pre>
+<hr />
+<h2 id="license">License</h2>
+<p><code>iceberg-loader</code> is distributed under the terms of the <a href="https://spdx.org/licenses/MIT.html">MIT</a> license.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": [], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
