@@ -101,13 +101,13 @@ jobs:
       - name: Test
         run: uv run pytest --cov=iceberg_loader --cov=tests --cov-report=xml --junitxml=pytest-report.xml
       - name: Upload coverage report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-${{ matrix.python-version }}
           path: coverage.xml
           if-no-files-found: error
       - name: Upload pytest report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: pytest-report-${{ matrix.python-version }}
           path: pytest-report.xml
@@ -133,7 +133,7 @@ jobs:
       - name: Build artifacts
         run: uv build
       - name: Upload dist artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-${{ matrix.python-version }}
           path: dist/*
