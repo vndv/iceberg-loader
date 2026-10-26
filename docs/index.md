@@ -192,19 +192,29 @@ Alternatively, use standard PyArrow conversion: `pa.Table.from_pylist(data)`.
 
 The helpers serialize dicts and lists as JSON and convert other non-null values to strings too. For example, an integer `id` becomes an Arrow string. If you need to preserve scalar types, prepare a typed Arrow table with PyArrow instead.
 
+The helpers sort columns by name, so a table they create gets alphabetical column order. Existing tables keep their own order.
+
 ### Idempotent Load (Replace Partition)
 
 Replace data for a specific day without adding duplicate rows:
 
 ```python
+day_data = pa.Table.from_pydict({
+    "id": [1, 2],
+    "name": ["Alice", "Bob"],
+    "signup_date": ["2023-01-01", "2023-01-01"],
+})
+
 config = LoaderConfig(
     write_mode="append",
     replace_filter="signup_date == '2023-01-01T00:00:00'",
     partition_col="day(signup_date)",
 )
 
-load_data_to_iceberg(table_data=data, table_identifier=("my_db", "my_table"), catalog=catalog, config=config)
+load_data_to_iceberg(table_data=day_data, table_identifier=("my_db", "my_table"), catalog=catalog, config=config)
 ```
+
+The filter must cover every row you load: rows outside it are not deleted first, so they are duplicated on each rerun.
 
 A string column partitioned with `year`/`month`/`day`/`hour` is stored as `timestamp(us)` when the loader creates the table, so the filter must compare it with a full timestamp literal (`'2023-01-01T00:00:00'`). A date-only literal such as `'2023-01-01'` raises `ValueError: Invalid timestamp without zone`. A column that is already `date` typed keeps its type, so filter it with a date literal (`'2023-01-01'`).
 
@@ -387,12 +397,14 @@ To route messages through your own handlers instead, configure first, then adjus
 
 - The default `write_mode` is `'overwrite'`. See the note in [Quickstart](#quickstart).
 - `replace_filter` works with `'append'` and `'overwrite'`: both delete matching rows and append (delete-then-append), so `'overwrite'` with a filter does not overwrite the whole table.
+- `replace_filter` must match every row being loaded; rows outside the filter are appended again on each rerun.
 - `replace_filter` cannot be combined with `write_mode='upsert'` (rejected by `LoaderConfig`).
 - Upsert needs `join_cols` (see [Upsert](#upsert-merge-into)).
 
 ### Schema and types
 
 - `schema_evolution=False` (the default): columns that are not in the table are **dropped silently**. Columns missing from the data are written as NULL.
+- With `schema_evolution=False` and `commit_interval > 1`, all batches in one commit must have the same schema, including column order; otherwise the load fails with `pyarrow.lib.ArrowInvalid`. Enable `schema_evolution` or keep batch schemas identical.
 - `schema_evolution=True` adds new top-level columns only. It does not change existing column types.
 - Data is cast to the table's column types. If a safe cast fails for **any** value in a column, the **whole column of that commit** is written as NULL, and a warning naming the column is logged.
 - Lossy casts that PyArrow can perform unsafely go through **without a warning**: floats are truncated to integers (`1.9 → 1`), and integer overflow wraps (`int64 → int32`). The only lossy cast that warns is timestamp precision loss (e.g. ns → us).
@@ -424,7 +436,7 @@ To route messages through your own handlers instead, configure first, then adjus
 | `commit_interval` | `int` | `0` | Commit every N batches; `0` and `1` both commit after every batch |
 | `join_cols` | `list[str] \| None` | `None` | Merge keys for upsert (required for `'upsert'`) |
 | `table_properties` | `dict \| None` | `None` | Custom Iceberg table properties; applied only when the loader creates the table |
-| `load_timestamp` | `datetime \| None` | `None` | If set, adds `_load_dttm` column with this value |
+| `load_timestamp` | `datetime \| None` | `None` | If set, adds a `load_ts_col` column (default `_load_dttm`) with this value |
 | `load_ts_col` | `str` | `'_load_dttm'` | Name of the load timestamp column |
 
 ---
