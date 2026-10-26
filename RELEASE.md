@@ -1,13 +1,14 @@
-# Unreleased
+# Release 0.2.0 — 2026-10-26
 
 ## Highlights
 - **New warning**: Casting a timestamp column to a coarser unit (e.g. `pa.timestamp('ns')` → microseconds) logs a warning when values lose precision. Previously the truncation was silent; the stored data is unchanged.
 - **New warning**: When `format-version` is set explicitly (in `IcebergLoader(table_properties=...)` or `LoaderConfig.table_properties`) and an existing table has a different version, the loader logs a warning. The table keeps its version. A non-integer `format-version` for an existing table is ignored with a warning.
 - **Fail fast on format v3**: If the new or existing table's format version is newer than the installed PyIceberg can write (currently 2), the loader raises `NotImplementedError` with a clear message before creating the table or writing data.
-- **Types**: Iceberg format v3 types `timestamp_ns`, `timestamptz_ns` and `unknown` now map to Arrow `timestamp('ns')`, `timestamp('ns', tz='UTC')` and `null` (requires PyIceberg >= 0.10). PyIceberg still cannot write v3 tables.
+- **Types**: Iceberg format v3 types `timestamp_ns`, `timestamptz_ns` and `unknown` now map to Arrow `timestamp('ns')`, `timestamp('ns', tz='UTC')` and `null`. PyIceberg still cannot write v3 tables.
 - **Dependencies**: `pydantic>=2.0,<3.0` is now a declared dependency (it was already required through PyIceberg).
 - `BatchConformer` and `SchemaManager.ensure_table_exists` accept an optional `requested_format_version` argument.
 - **Change**: `create_arrow_table_from_data` and `create_record_batches_from_dicts` now sort columns by name. Previously the order came from a `set` and could change between runs. New tables created from these helpers get sorted column order; existing tables are unaffected.
+- **Docs**: Documentation audit. Fixed broken `replace_filter` examples, documented that the default `write_mode` is `'overwrite'`, that `commit_interval=0` commits every batch, and that `table_properties` apply only at table creation; added a "Behavior & gotchas" section and a full API reference. Architecture notes moved to `docs/ARCHITECTURE.md`; added `AGENTS.md` for coding agents.
 
 ## Breaking Changes
 - **Minimum PyIceberg is now 0.10.0** (was 0.7.1). Upsert needs `Table.upsert` (PyIceberg 0.9) and `expire_snapshots` needs `table.maintenance` (PyIceberg 0.10); older versions failed with `AttributeError`.
@@ -16,6 +17,7 @@
 ## Test Plan
 - `uv run pytest -v`
 - `uv run ruff check . && uv run ruff format --check . && uv run ty check`
+- `bash tools/run_examples_smoke.sh`
 
 # Release 0.1.4 — 2026-10-02
 
