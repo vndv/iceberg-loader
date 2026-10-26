@@ -10,3 +10,4 @@ theme:
 nav:
   - Home: index.md
   - Examples: examples.md
+  - Architecture: ARCHITECTURE.md

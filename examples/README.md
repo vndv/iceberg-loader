@@ -48,14 +48,15 @@ Trino connection:
 host: localhost
 port: 8080
 database: iceberg
-username: trion
+username: trino
 password: <empty>
 ```
 
 MinIO:
 
 ```
-endpoint: http://localhost:9001
+endpoint: http://localhost:9000
+console: http://localhost:9001
 access_key: minio
 secret_key: minio123
 ```
@@ -83,6 +84,9 @@ uv run python load_upsert.py
 # Commit interval for long streams
 uv run python load_with_commits.py
 
+# Messy JSON
+uv run python load_complex_json.py
+
 # Messy JSON: PyArrow failure vs iceberg-loader success
 uv run python compare_complex_json_fail.py
 
@@ -101,6 +105,9 @@ uv run python load_from_api.py
 
 # Maintenance: expiring snapshots
 uv run python maintenance_example.py
+
+# Load timestamp column + time-transform partitioning
+uv run python load_timestamp_partitioning.py
 ```
 
 Run the local smoke subset:
@@ -120,8 +127,10 @@ The smoke suite runs the fast examples against the bundled Docker stack, includi
 - `rest_catalog_example.py`: REST Catalog connection, table creation, append, read-back.
 - `load_upsert.py`: upsert by keys.
 - `load_with_commits.py`: commit_interval for streams.
+- `load_complex_json.py`: dicts, lists, and mixed values serialized to JSON strings.
 - `compare_complex_json_fail.py`: PyArrow fails on mixed types, `iceberg-loader` succeeds.
 - `advanced_scenarios.py`: schema evolution, custom types, partitioning.
 - `load_stream.py`: Arrow IPC stream.
 - `load_from_api.py`: REST API batches.
 - `maintenance_example.py`: snapshot expiration.
+- `load_timestamp_partitioning.py`: `_load_dttm` load timestamp with `day`/`hour` partitioning, and the rejected identity partition.

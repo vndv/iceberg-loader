@@ -5,7 +5,7 @@ This file contains metadata that should be configured in the GitHub repository s
 ## Repository Description
 
 ```
-Robust data loading utilities for Apache Iceberg tables with schema evolution, idempotent writes, and PyArrow integration
+PyArrow-first loader for Apache Iceberg that ingests messy JSON and structured data with append/overwrite, idempotent replace, and upsert flows. Handles schema evolution, batching, streaming; tested on Hive Metastore and REST Catalog (Polaris).
 ```
 
 ## Topics (GitHub Tags)
@@ -30,9 +30,9 @@ Add these topics to your repository (Settings → Topics):
 2. Click on the ⚙️ (gear icon) next to "About" in the top right
 3. Add the description in the "Description" field
 4. Add the topics in the "Topics" field (comma-separated or one by one)
-5. Set the website to your GitHub Pages URL (when deployed):
+5. Set the website to the GitHub Pages URL:
    ```
-   https://ivanmatveev.github.io/iceberg-loader/
+   https://vndvtech.github.io/iceberg-loader/
    ```
 6. Check these boxes:
    - ☑️ Releases

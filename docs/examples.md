@@ -175,7 +175,7 @@ data = [
 arrow_table = create_arrow_table_from_data(data)
 
 config = LoaderConfig(write_mode="append")
-load_data_to_iceberg(data, ("db", "events"), catalog, config=config)
+load_data_to_iceberg(arrow_table, ("db", "events"), catalog, config=config)
 ```
 
 ### Schema Evolution

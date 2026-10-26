@@ -93,17 +93,16 @@ and `examples/load_stream.py` because it is much heavier than a normal CI smoke 
 - **Python Version**: 3.10+ (3.12 recommended)
 - **Linter**: `ruff` for linting and formatting
 - **Type Hints**: Add type hints to all public functions and classes
-- **Docstrings**: Use Google-style docstrings for public APIs
-- **Logging**: Use `logging.getLogger(__name__)` pattern
+- **Docstrings**: Give public functions and classes a short docstring that says what they do; add `Args:`/`Returns:`/`Raises:` sections when the behavior is not obvious from the signature (see `get_rest_catalog` in `catalog.py`)
+- **Logging**: Use the package logger: `from iceberg_loader.services.logging import logger`. It writes to the `iceberg_loader` logger, which does not propagate to the root logger
 - **No Comments**: Code should be self-explanatory (unless complex logic requires explanation)
 
 ### Example
 
 ```python
-import logging
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from iceberg_loader.services.logging import logger
 
 
 def load_data(table_id: tuple[str, str], data: Any) -> dict[str, Any]:
@@ -128,26 +127,29 @@ def load_data(table_id: tuple[str, str], data: Any) -> dict[str, Any]:
 - **Test Coverage**: Aim for 90%+ coverage for new code
 - **Test Structure**: Use descriptive test names that explain what is being tested
 - **Fixtures**: Use pytest fixtures for common test setups
-- **Mocking**: Mock external dependencies (catalog, tables) appropriately
+- **Catalog**: Test against a real catalog, not mocks. The `sql_catalog` fixture (`tests/conftest.py`) gives each test an isolated sqlite-backed `SqlCatalog` with a `default` namespace
+- **Log assertions**: The `iceberg_loader` logger does not propagate to root, so `caplog` alone misses its records; use the `loader_warnings` fixture
 
 ### Example Test
 
 ```python
-def test_load_data_with_schema_evolution():
-    """Test that schema evolution adds new columns correctly."""
-    # Arrange
-    catalog = get_mock_catalog()
-    data = create_test_data()
+import pyarrow as pa
+from pyiceberg.catalog.sql import SqlCatalog
 
-    # Act
-    from iceberg_loader import LoaderConfig
+from iceberg_loader import LoaderConfig, load_data_to_iceberg
 
-    config = LoaderConfig(schema_evolution=True)
-    result = load_data_to_iceberg(data, ("db", "table"), catalog, config=config)
 
-    # Assert
-    assert result['rows_loaded'] == 3
+def test_schema_evolution_adds_new_column(sql_catalog: SqlCatalog) -> None:
+    config = LoaderConfig(write_mode='append', schema_evolution=True)
+    load_data_to_iceberg(pa.table({'id': [1]}), ('default', 'events'), sql_catalog, config=config)
+
+    result = load_data_to_iceberg(pa.table({'id': [2], 'x': ['a']}), ('default', 'events'), sql_catalog, config=config)
+
+    assert result['rows_loaded'] == 1
+    assert sql_catalog.load_table(('default', 'events')).schema().find_field('x')
 ```
+
+Set `write_mode` explicitly in tests: the default is `'overwrite'`.
 
 ## Pull Request Process
 
@@ -177,25 +179,28 @@ def test_load_data_with_schema_evolution():
    - Be open to feedback
    - Update PR based on suggestions
 
-## Release Process
+## Release Checklist
 
-Releases are automated via GitHub Actions:
+This is the single release checklist; other documents link here.
 
-1. Ensure all tests pass on `main`
-2. Update version in `src/iceberg_loader/__about__.py`
-3. Create and push a git tag:
+1. Bump the version in `pyproject.toml` and `src/iceberg_loader/__about__.py` (they must match).
+2. Move the `Unreleased` section of `RELEASE.md` under a `# Release X.Y.Z — YYYY-MM-DD` heading, with highlights and breaking changes.
+3. Run `uv lock`, commit `uv.lock` if it changes, then verify it with `uv lock --locked`.
+4. Run lint, types, and tests:
    ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
+   uv run ruff check . && uv run ruff format --check . && uv run ty check
+   uv run pytest
    ```
-4. GitHub Actions will automatically:
-   - Build the package
-   - Run tests
-   - Publish to PyPI
+5. Merge to `main`, then create an annotated tag and push it:
+   ```bash
+   git tag -a vX.Y.Z -m "Release X.Y.Z"
+   git push origin vX.Y.Z
+   ```
+6. The tag triggers `.github/workflows/release.yml`: it runs lint, types, and tests, builds the package, and publishes to PyPI. Do not upload with `twine` by hand.
 
 ## Getting Help
 
-- **Questions**: Open a [Discussion](https://github.com/vndvtech/iceberg-loader/discussions)
+- **Questions**: Open an [Issue](https://github.com/vndvtech/iceberg-loader/issues)
 - **Bugs**: Open an [Issue](https://github.com/vndvtech/iceberg-loader/issues)
 - **Features**: Open an [Issue](https://github.com/vndvtech/iceberg-loader/issues) with the `enhancement` label
 

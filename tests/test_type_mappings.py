@@ -29,7 +29,6 @@ def test_iceberg_to_arrow_basic() -> None:
     assert get_arrow_type(LongType()) == pa.int64()
 
 
-@pytest.mark.skipif(not hasattr(pyiceberg.types, 'UnknownType'), reason='format v3 types need pyiceberg >= 0.10')
 def test_iceberg_v3_types_to_arrow() -> None:
     v3 = pyiceberg.types
     assert get_arrow_type(v3.TimestampNanoType()) == pa.timestamp('ns')
