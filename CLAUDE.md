@@ -31,41 +31,26 @@ uv run ruff format .
 
 ## Architecture
 
-The library is a thin convenience wrapper around PyIceberg for loading PyArrow data into Apache Iceberg tables.
+The library is a thin convenience wrapper around PyIceberg for loading PyArrow data into Apache Iceberg tables. Full component map, data flow, module dependencies, and "where to make changes": `docs/ARCHITECTURE.md`.
 
-**Public API** (`src/iceberg_loader/__init__.py`):
-- `load_data_to_iceberg(table, identifier, catalog, config)` — single `pa.Table` in memory
-- `load_batches_to_iceberg(iterator, identifier, catalog, config)` — iterator of `pa.RecordBatch`
-- `load_ipc_stream_to_iceberg(stream, identifier, catalog, config)` — Arrow IPC stream file/socket
-- `IcebergLoader` — stateful class for reuse across calls
-- `LoaderConfig` — Pydantic config model; all options go here
-
-**Core layer** (`src/iceberg_loader/core/`):
-- `loader.py` — `IcebergLoader` is the main orchestrator. `load_data_batches` buffers batches up to `commit_interval`, hands each buffer to `BatchConformer`, then delegates writes to the selected `WriteStrategy`.
-- `conform.py` — `BatchConformer` (one per load) owns the target table: loads or creates it, appends the load timestamp column, evolves the schema, and casts data to the table schema (failed casts become NULL with a warning).
-- `config.py` — `LoaderConfig` (frozen Pydantic model). Validates partition expressions, rejects invalid combos (`replace_filter` + `upsert`, identity partition on the load timestamp column). Default table properties (Parquet/zstd, format v2, commit retry) live here as `TABLE_PROPERTIES`.
-- `strategies.py` — Strategy pattern for writes: `AppendStrategy`, `OverwriteStrategy` (overwrites on first batch, appends after), `IdempotentStrategy` (delete-then-append via `replace_filter`), `UpsertStrategy` (PyIceberg Merge Into). Selected by `get_write_strategy()`.
-- `schema.py` — `SchemaManager` converts Arrow↔Iceberg schemas, creates tables, and handles schema evolution (adds new columns only, top-level).
-- `partitioning.py` — Parses partition transform strings like `day(signup_date)` or `bucket(16, id)`.
-
-**Utils** (`src/iceberg_loader/utils/`):
-- `arrow.py` — `create_arrow_table_from_data`, `create_record_batches_from_dicts` (auto-serializes dicts/lists to strings), `convert_table_types` (casts Arrow table to match target schema).
-- `types.py` — Bidirectional Arrow↔Iceberg type mappings.
-
-**Services** (`src/iceberg_loader/services/`):
-- `logging.py` — module-level logger
-- `maintenance.py` — `expire_snapshots` utility
+- Public API (`src/iceberg_loader/__init__.py`): `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg`, `IcebergLoader`, `LoaderConfig`, `get_rest_catalog`, `expire_snapshots`.
+- `core/loader.py` — `IcebergLoader` buffers batches up to `commit_interval`, hands each buffer to `BatchConformer` (`core/conform.py`: create/load table, load timestamp, schema evolution, casts), then writes it with a `WriteStrategy` (`core/strategies.py`).
+- `core/schema.py` — `SchemaManager`: table creation, top-level schema evolution, Arrow↔Iceberg conversion. `core/config.py` — `LoaderConfig` and `TABLE_PROPERTIES`. `core/partitioning.py` — partition transform parsing.
+- `catalog.py` — `get_rest_catalog()` builds a `RestCatalog` from args or env vars.
+- `iceberg_loader.py` — backward-compat shim for `from iceberg_loader.iceberg_loader import ...`; it duplicates the three wrapper functions, so keep it in sync when their signatures change.
+- `utils/arrow.py`, `utils/types.py` — dict→Arrow conversion, casts, type mappings. `services/logging.py`, `services/maintenance.py` — logger, `expire_snapshots`.
 
 ## Key Constraints
 
-- `schema_evolution=False` by default; set to `True` to add columns automatically.
+- `schema_evolution=False` by default; set to `True` to add columns automatically. Without it, unknown columns are dropped silently.
+- The default `write_mode` is `'overwrite'`: a `LoaderConfig()` without `write_mode` (or `config=None`) replaces the table. Set `write_mode` explicitly in tests and examples.
+- `commit_interval=0` (the default) means one commit per batch, same as `1` — not a single transaction. A load is atomic only if all batches fit in one buffer.
+- All `table_properties` (not just `format-version`) apply only when the loader creates the table; existing tables keep their properties.
 - `replace_filter` and `write_mode='upsert'` are mutually exclusive.
 - Identity partition on the load timestamp column (`_load_dttm`) is rejected — use `day(...)` or `hour(...)`.
-- Partition string columns used with time transforms (`year`/`month`/`day`/`hour`) are auto-promoted to `timestamp(us)` at table creation.
+- Partition string columns used with time transforms (`year`/`month`/`day`/`hour`) are auto-promoted to `timestamp(us)` at table creation, so `replace_filter` on them needs a timestamp literal (`'2023-01-01T00:00:00'`).
 - All public API options must be passed via `LoaderConfig`; avoid legacy positional arguments.
 
 ## Versioning & Release
 
-- Bump version in both `pyproject.toml` and `src/iceberg_loader/__about__.py` (must match).
-- Update `RELEASE.md`, run `uv lock`, commit `uv.lock` if it changes, then verify it with `uv lock --locked` before tagging.
-- Tag format: `git tag -a vX.Y.Z` — CI publishes to PyPI automatically.
+Follow the release checklist in `CONTRIBUTING.md`. In short: bump the version in both `pyproject.toml` and `src/iceberg_loader/__about__.py` (must match), update `RELEASE.md`, run `uv lock` and `uv lock --locked`, then `git tag -a vX.Y.Z` — CI publishes to PyPI.

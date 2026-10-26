@@ -31,26 +31,26 @@ classifiers = [
 dependencies = [
   "pyarrow>=18.0.0",
   "pydantic>=2.0,<3.0",
-  "pyiceberg>=0.7.1",
+  "pyiceberg>=0.10.0",
 ]
 
 [project.optional-dependencies]
 hive = [
-  "pyiceberg[hive]>=0.7.1",
+  "pyiceberg[hive]>=0.10.0",
 ]
 s3 = [
-  "pyiceberg[s3fs]>=0.7.1",
+  "pyiceberg[s3fs]>=0.10.0",
 ]
 rest = [
-  "pyiceberg[pyiceberg-core,s3fs]>=0.7.1",
+  "pyiceberg[pyiceberg-core,s3fs]>=0.10.0",
 ]
 all = [
-  "pyiceberg[hive,s3fs,pyiceberg-core]>=0.7.1",
+  "pyiceberg[hive,s3fs,pyiceberg-core]>=0.10.0",
 ]
 test = [
   "pytest>=7.0",
   "pytest-cov>=4.0",
-  "pyiceberg[sql-sqlite]>=0.7.1",
+  "pyiceberg[sql-sqlite]>=0.10.0",
 ]
 dev = [
   "ruff>=0.5.0",
@@ -60,14 +60,14 @@ dev = [
   "pre-commit>=3.5.0",
   "twine>=5.0.0",
   "tox>=4.32.0",
-  "pyiceberg[sql-sqlite]>=0.7.1",
+  "pyiceberg[sql-sqlite]>=0.10.0",
 ]
 
 [dependency-groups]
 test = [
   "pytest>=7.0",
   "pytest-cov>=4.0",
-  "pyiceberg[sql-sqlite]>=0.7.1",
+  "pyiceberg[sql-sqlite]>=0.10.0",
 ]
 dev = [
   "ruff>=0.5.0",
@@ -77,7 +77,7 @@ dev = [
   "pre-commit>=3.5.0",
   "twine>=5.0.0",
   "tox>=4.32.0",
-  "pyiceberg[sql-sqlite]>=0.7.1",
+  "pyiceberg[sql-sqlite]>=0.10.0",
 ]
 
 [tool.tox]
@@ -106,7 +106,7 @@ commands = [
 
 [project.urls]
 Homepage = "https://github.com/vndvtech/iceberg-loader"
-Documentation = "https://github.com/vndvtech/iceberg-loader"
+Documentation = "https://vndvtech.github.io/iceberg-loader/"
 Repository = "https://github.com/vndvtech/iceberg-loader"
 "Bug Tracker" = "https://github.com/vndvtech/iceberg-loader/issues"
 Changelog = "https://github.com/vndvtech/iceberg-loader/releases"

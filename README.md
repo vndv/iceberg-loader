@@ -25,11 +25,11 @@ iceberg-loader wraps [PyIceberg](https://py.iceberg.apache.org/) to load data in
 - **Schema evolution:** adds columns when enabled and preserves field IDs.
 - **Write modes:** append, overwrite, idempotent replacement via `replace_filter`, and upsert.
 - **Streaming:** commit intervals, batches, and IPC streams.
-- **Configuration:** `LoaderConfig` sets defaults that can be overridden per call.
+- **Configuration:** all options live in one validated `LoaderConfig`; an `IcebergLoader` can hold a default config, and a per-call config replaces it.
 
 ## Benchmark
 
-[iceberg-loader-benchmark](https://github.com/vndv/iceberg-loader-benchmark) compares iceberg-loader with the [dlt](https://github.com/dlt-hub/dlt) Iceberg destination. Both write the same Arrow data through a Polaris REST Catalog and MinIO. On a 1 GiB NYC 311 snapshot (1.72M rows), iceberg-loader had a median write time of 3.7 s and a median peak RSS of 1.36 GiB; dlt took 11.4 s and 2.26 GiB. The repo covers the methodology, raw data, and how to reproduce the run.
+On a 1 GiB NYC 311 snapshot written through Polaris and MinIO, iceberg-loader took a median 3.7 s and 1.36 GiB peak RSS versus 11.4 s and 2.26 GiB for the [dlt](https://github.com/dlt-hub/dlt) Iceberg destination. Methodology and raw data: [iceberg-loader-benchmark](https://github.com/vndv/iceberg-loader-benchmark).
 
 ## Install
 
@@ -42,6 +42,15 @@ Or with [uv](https://docs.astral.sh/uv/):
 ```bash
 uv add "iceberg-loader[all]"
 ```
+
+| Extra | Description |
+|-------|-------------|
+| `hive` | Hive Metastore support |
+| `s3` | S3 filesystem support |
+| `rest` | REST Catalog support (Tabular, Polaris, self-hosted) |
+| `all` | All extras |
+
+Requires Python 3.10+, PyArrow >= 18, PyIceberg >= 0.10.
 
 ## Quickstart
 
@@ -112,6 +121,8 @@ catalog = load_catalog("my-rest-catalog")
 # ... rest is identical to above
 ```
 
+> **The default `write_mode` is `'overwrite'`.** A loader call without `config`, or with a `LoaderConfig` that does not set `write_mode`, replaces all data in the table. Set `write_mode="append"` explicitly unless you mean to overwrite.
+
 ## Which function to use?
 
 | Function                     | Use when...                                                  | Input Format                      |
@@ -120,57 +131,13 @@ catalog = load_catalog("my-rest-catalog")
 | `load_batches_to_iceberg`    | You have a generator/iterator of batches (memory efficient). | Iterator of `pyarrow.RecordBatch` |
 | `load_ipc_stream_to_iceberg` | You are reading from an Arrow IPC stream file/socket.        | File-like object or path          |
 
-## Preparing Data
+## Documentation
 
-These helpers convert Python dictionaries to Arrow data, including mixed fields:
-
-```python
-from iceberg_loader.utils.arrow import create_arrow_table_from_data, create_record_batches_from_dicts
-
-# 1. Convert list of dicts -> pa.Table
-arrow_table = create_arrow_table_from_data(data_list)
-
-# 2. Convert iterator of dicts -> Iterator[pa.RecordBatch]
-batches = create_record_batches_from_dicts(data_generator(), batch_size=10000)
-```
-
-Alternatively, use standard PyArrow conversion: `pa.Table.from_pylist(data)`.
-
-The helpers serialize dicts and lists as JSON and convert other non-null values to strings too. For example, an integer `id` becomes an Arrow string. If you need to preserve scalar types, prepare a typed Arrow table with PyArrow instead.
-
-For timestamp columns, prefer partition transforms such as `day(ts)` or `hour(ts)`, especially when using `load_timestamp`.
-
-### Timestamp precision and format version
-
-- Iceberg format v1/v2 stores timestamps in microseconds. Nanosecond input (`pa.timestamp('ns')`) is truncated to microseconds; when values actually lose precision, the loader logs a warning naming the column.
-- `format-version` in `table_properties` applies only when the loader creates a table. Loading into an existing table never changes its version; if you set `format-version` explicitly and it differs from the table's version, the loader logs a warning. The library default (`format-version: 2`) does not trigger it.
-- PyIceberg cannot write format v3 tables yet. Requesting `format-version: 3` for a new table, or loading into an existing v3 table, raises `NotImplementedError` before anything is written.
-- A `format-version` that is not a whole number (e.g. `'v2'` or `2.9`) is ignored for existing tables, with a warning.
-
-## Public API & Stability
-
-- Top-level exports include `LoaderConfig`, `IcebergLoader`, `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg`, `get_rest_catalog`, and `expire_snapshots`.
-- Data conversion helpers are available from `iceberg_loader.utils.arrow`. Pass loading options via `LoaderConfig`.
-- Avoid legacy positional arguments—use the `config` parameter only.
-- LoaderConfig validates partition expressions and rejects unsafe combos (e.g., `replace_filter` with `upsert`, identity partition on `_load_dttm`).
-
-## How we version
-
-- Semantic Versioning starting at `0.1.x`: **MINOR** for compatible features, **PATCH** for fixes, **MAJOR** for breaking API changes.
-- Breaking changes to documented APIs are noted in `RELEASE.md`.
-
-## Release checklist
-
-- Bump version in `pyproject.toml` and `src/iceberg_loader/__about__.py` (they must match).
-- Update `RELEASE.md` with highlights and breaking notes.
-- Run `uv lock`, commit `uv.lock` if it changes, then verify it with `uv lock --locked`.
-- Run `uv run ruff check .`, `uv run ty check`, and `uv run python -m pytest`.
-- Tag and push (`git tag -a vX.Y.Z ...`), then let CI publish.
-
+The [documentation site](https://vndvtech.github.io/iceberg-loader/) covers data preparation helpers, idempotent loads, upserts, batching, table properties, logging, the full `LoaderConfig` and API reference, and a **Behavior & gotchas** section (commit atomicity, dropped columns, partitioning limits) worth reading before production use. Versioning policy and the public API are described there too; changes are listed in [RELEASE.md](RELEASE.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, coding style, and PR guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, coding style, PR guidelines, and the release checklist.
 
 ```bash
 uv run ruff check . && uv run ruff format --check . && uv run ty check

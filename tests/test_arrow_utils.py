@@ -25,6 +25,23 @@ def test_create_arrow_table_basic() -> None:
     assert set(table.schema.names) == {'id', 'name'}
 
 
+def test_create_arrow_table_orders_columns_by_name() -> None:
+    names = [f'col_{i:02d}' for i in range(20)]
+    data = [dict.fromkeys(reversed(names[:10]), 1), dict.fromkeys(names[5:], 1)]
+
+    table = create_arrow_table_from_data(data)
+
+    assert table.column_names == names
+
+
+def test_create_record_batches_same_schema_regardless_of_key_order() -> None:
+    rows = [{'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'b': 5, 'a': 6}, {'b': 7, 'a': 8}]
+
+    batches = list(create_record_batches_from_dicts(iter(rows), batch_size=2))
+
+    assert batches[0].schema.equals(batches[1].schema)
+
+
 def test_create_arrow_table_empty() -> None:
     data: list[dict[str, object]] = []
     table = create_arrow_table_from_data(data)

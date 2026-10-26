@@ -7,8 +7,10 @@
 - **Types**: Iceberg format v3 types `timestamp_ns`, `timestamptz_ns` and `unknown` now map to Arrow `timestamp('ns')`, `timestamp('ns', tz='UTC')` and `null` (requires PyIceberg >= 0.10). PyIceberg still cannot write v3 tables.
 - **Dependencies**: `pydantic>=2.0,<3.0` is now a declared dependency (it was already required through PyIceberg).
 - `BatchConformer` and `SchemaManager.ensure_table_exists` accept an optional `requested_format_version` argument.
+- **Change**: `create_arrow_table_from_data` and `create_record_batches_from_dicts` now sort columns by name. Previously the order came from a `set` and could change between runs. New tables created from these helpers get sorted column order; existing tables are unaffected.
 
 ## Breaking Changes
+- **Minimum PyIceberg is now 0.10.0** (was 0.7.1). Upsert needs `Table.upsert` (PyIceberg 0.9) and `expire_snapshots` needs `table.maintenance` (PyIceberg 0.10); older versions failed with `AttributeError`.
 - Loading into an existing format v3 table now raises `NotImplementedError` from iceberg-loader instead of `ValueError: Cannot write manifest for table version: 3` from PyIceberg. The load failed before as well; only the exception type and message changed.
 
 ## Test Plan
@@ -108,15 +110,6 @@
   - `iceberg_loader.core.config`, `iceberg_loader.core.schema`, `iceberg_loader.core.loader`
   - `iceberg_loader.services.logging`, `iceberg_loader.services.maintenance`
   - `iceberg_loader.utils.types`
-- See `TODO.md` for migration examples.
-
-## Test Plan
-- `tox -e lint`
-- `tox -e py310-tests`
-- `tox -e py311-tests`
-- `tox -e py312-tests`
-- `tox -e py313-tests`
-- `tox -e py314-tests`
 
 ## Release Steps
 1) Ensure version is set to `0.0.6` in `src/iceberg_loader/__about__.py`.
@@ -126,3 +119,7 @@
    git push origin v0.0.6
    ```
 3) GitHub Actions (`.github/workflows/release.yml`) will run lint/types/tests, build, and publish (TestPyPI/PyPI if tokens present).
+
+# Earlier releases
+
+Releases 0.0.2–0.0.5 and 0.1.0–0.1.2 have no entries in this file. See the [git tags](https://github.com/vndvtech/iceberg-loader/tags) and [GitHub Releases](https://github.com/vndvtech/iceberg-loader/releases).

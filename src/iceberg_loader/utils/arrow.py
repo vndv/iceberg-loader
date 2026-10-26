@@ -46,7 +46,7 @@ def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
     if not data:
         return pa.Table.from_arrays([], schema=pa.schema([]))
 
-    all_keys = set().union(*(d.keys() for d in data))
+    all_keys = sorted(set().union(*(d.keys() for d in data)))
     arrays = []
     fields = []
     pool = _get_memory_pool()
