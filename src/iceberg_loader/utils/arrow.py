@@ -1,4 +1,3 @@
-import contextlib
 import json
 from collections.abc import Iterator
 from functools import partial
@@ -28,24 +27,11 @@ def _create_field_for_column(
     column_values: list[str | None],
     pool: pa.MemoryPool,
 ) -> tuple[pa.Array, pa.Field]:
-    try:
-        array = pa.array(column_values, memory_pool=pool)
-        field = pa.field(key, array.type, nullable=True)
-        return array, field
-    except (pa.ArrowInvalid, pa.ArrowTypeError):
-        # Fallback to string if type inference fails
-        pass
-
-    str_values = [str(v) if v is not None else None for v in column_values]
-    array = pa.array(str_values, type=pa.string(), memory_pool=pool)
-    field = pa.field(key, pa.string(), nullable=True)
-    return array, field
+    array = pa.array(column_values, memory_pool=pool)
+    return array, pa.field(key, array.type, nullable=True)
 
 
 def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
-    if not data:
-        return pa.Table.from_arrays([], schema=pa.schema([]))
-
     all_keys = sorted(set().union(*(d.keys() for d in data)))
     arrays = []
     fields = []
@@ -95,12 +81,6 @@ def convert_column_type(column: pa.Array, target_type: pa.DataType, column_name:
                 target_type,
             )
         return result
-
-    if (pa.types.is_string(column.type) or pa.types.is_large_string(column.type)) and (
-        pa.types.is_timestamp(target_type) or pa.types.is_date(target_type)
-    ):
-        with contextlib.suppress(Exception):
-            pass
 
     logger.warning(
         'Cast failed for column %s (%s -> %s). Filling with NULLs.',
