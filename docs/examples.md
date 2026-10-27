@@ -39,7 +39,7 @@ Then run examples from the same `examples/` directory (see commands below). With
 | [`maintenance_example.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/maintenance_example.py) | Snapshot expiration |
 | [`rest_catalog_example.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/rest_catalog_example.py) | REST Catalog setup (Polaris/Tabular) with `get_rest_catalog()` |
 | [`load_timestamp_partitioning.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_timestamp_partitioning.py) | `_load_dttm` load timestamp + time-transform partitioning |
-| [`load_observability.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_observability.py) | Load timings and per-column cast counters |
+| [`load_observability.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_observability.py) | Load timings and per-column cast counters |
 
 ## Running
 
