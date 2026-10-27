@@ -28,6 +28,7 @@ iceberg-loader wraps [PyIceberg](https://py.iceberg.apache.org/) to load data in
 - **Configuration:** all options live in one validated `LoaderConfig`; an `IcebergLoader` can hold a default config, and a per-call config replaces it.
 - **Observability:** every load returns `conform_ms`/`write_ms`/`total_ms` timings and per-column cast counters (`casts_applied`, `casts_lossy`, `casts_failed`), and logs them as `METRIC: load_completed`.
 - **Register existing Parquet:** `register_parquet_files` adds files written by another tool without rewriting them, after checking schema, partition statistics, and duplicates.
+- **Incremental loads:** `get_high_watermark` returns the largest loaded value of a column, so the next run reads only newer source rows.
 
 ## Benchmark
 
@@ -133,6 +134,7 @@ catalog = load_catalog("my-rest-catalog")
 | `load_batches_to_iceberg`    | You have a generator/iterator of batches (memory efficient). | Iterator of `pyarrow.RecordBatch` |
 | `load_ipc_stream_to_iceberg` | You are reading from an Arrow IPC stream file/socket.        | File-like object or path          |
 | `register_parquet_files`     | Parquet files already exist and must not be rewritten.       | Absolute paths or URIs            |
+| `get_high_watermark`         | You filter the source by the last loaded value.              | Table identifier + column name    |
 
 ## Documentation
 

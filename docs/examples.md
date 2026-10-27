@@ -44,6 +44,7 @@ Then run examples from the same `examples/` directory (see commands below). With
 | [`load_pyarrow_dataset.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_pyarrow_dataset.py) | PyArrow `Dataset` streaming with `commit_interval` |
 | [`load_observability.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_observability.py) | Load timings and per-column cast counters |
 | [`register_parquet_files.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/register_parquet_files.py) | Register existing Parquet files without rewriting them |
+| [`watermark_incremental.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/watermark_incremental.py) | Full load, then an incremental DuckDB query filtered by `get_high_watermark()` |
 
 ## Running
 
@@ -90,6 +91,7 @@ uv run --with duckdb python load_from_duckdb.py
 uv run --with polars python load_from_polars.py
 uv run python load_observability.py
 uv run python register_parquet_files.py
+uv run --with duckdb python watermark_incremental.py
 ```
 
 ---

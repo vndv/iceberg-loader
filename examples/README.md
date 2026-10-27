@@ -123,6 +123,9 @@ uv run python load_observability.py
 
 # Register existing Parquet files without rewriting them
 uv run python register_parquet_files.py
+
+# Incremental load using a high watermark (DuckDB source)
+uv run --with 'duckdb>=1.1,<3' python watermark_incremental.py
 ```
 
 Run the local smoke subset:
@@ -154,3 +157,4 @@ The smoke suite runs the fast examples against the bundled Docker stack, includi
 - `load_pyarrow_dataset.py`: PyArrow `Dataset` streaming through `load_batches_to_iceberg` with `commit_interval=2`.
 - `load_observability.py`: `conform_ms`/`write_ms`/`total_ms` timings and per-column `casts_*` counters.
 - `register_parquet_files.py`: register externally written Parquet files on S3, and the rejected duplicate registration.
+- `watermark_incremental.py`: full load, then an incremental DuckDB query filtered by `get_high_watermark()`.

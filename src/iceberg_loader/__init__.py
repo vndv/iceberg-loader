@@ -8,6 +8,7 @@ from iceberg_loader.catalog import get_rest_catalog
 from iceberg_loader.core import (
     IcebergLoader,
     LoaderConfig,
+    get_high_watermark,
     load_batches_to_iceberg,
     load_data_to_iceberg,
     load_ipc_stream_to_iceberg,
@@ -20,6 +21,7 @@ __all__ = [
     'LoaderConfig',
     '__version__',
     'expire_snapshots',
+    'get_high_watermark',
     'get_rest_catalog',
     'load_batches_to_iceberg',
     'load_data_to_iceberg',

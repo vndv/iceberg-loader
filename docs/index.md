@@ -352,6 +352,47 @@ result = register_parquet_files(
 - Paths must be absolute local paths or URIs (`file://`, `s3://`, …); they are stored in the table exactly as given. Relative paths raise `ValueError`.
 - Use this for migration. Use `load_data_to_iceberg` when the data is in memory, needs schema evolution, or needs a write mode such as overwrite or upsert.
 
+### Incremental Loading with a Watermark
+
+For append-only sources, read the high watermark from the destination, filter the source with
+`> watermark`, and load only the rows that arrived after the previous run:
+
+```python
+from iceberg_loader import LoaderConfig, get_high_watermark, load_data_to_iceberg
+
+watermark = get_high_watermark(("db", "events"), "updated_at", catalog)
+if watermark is None:  # first run or empty table: `> NULL` would match nothing
+    new_rows = source.query("SELECT * FROM events")
+else:
+    new_rows = source.query("SELECT * FROM events WHERE updated_at > ?", [watermark])
+load_data_to_iceberg(new_rows, ("db", "events"), catalog, LoaderConfig(write_mode="append"))
+```
+
+`get_high_watermark` returns the maximum visible value of the column in its Python type, or `None`
+when the table has no rows or the column is all `NULL` (or NaN). Handle `None` explicitly: passing it
+to `> ?` filters out every source row, so the pipeline would never load anything. **Persisting the watermark between runs is
+the orchestrator's job** (an Airflow Variable/XCom, a database row, an object in S3, and so on);
+this helper never stores checkpoints.
+
+| Mode | What it reads | Cost | Notes |
+|------|---------------|------|-------|
+| `auto` (default) | Metadata when its preconditions hold, otherwise a scan | Cheapest that is correct | Silent fallback; the reason is logged at debug level |
+| `metadata` | Maximum `upper_bound` in the data-file metadata | Manifests only | Top-level numeric/temporal columns, no delete files; raises `ValueError` otherwise |
+| `scan` | The visible column, batch by batch, then `max()` | Full column scan | Works for every primitive type; accounts for position deletes (PyIceberg raises on equality deletes) |
+
+Correctness caveats:
+
+- **Truncated string bounds:** Iceberg truncates `string`/`binary` statistics, so `metadata` mode
+  refuses those columns (`ValueError` suggesting `mode="scan"`). `auto` falls back to a scan.
+- **Delete files:** data-file bounds may include rows hidden by deletes, so `metadata` mode refuses
+  tables with delete files. `scan` reads only visible rows.
+- **NaN:** ignored for `float`/`double` columns. A column with only NaN and `NULL` returns `None` from
+  `scan`/`auto`; `metadata` refuses it because PyIceberg does not record NaN counts.
+- **Equal timestamps:** a late-arriving row whose timestamp is equal to or below the watermark is
+  not re-read by `> watermark`. Use `>=` with a de-duplicating strategy if that can happen.
+
+Nested, dotted, and unknown column names raise `ValueError` naming the available top-level columns.
+
 ### Adding Load Timestamp
 
 Set `load_timestamp` to add a timestamp column (by default, `_load_dttm`) to every row. You can use it for audit trails or partitioning by load time.
@@ -574,6 +615,25 @@ def register_parquet_files(
 
 Returns `{'files_added': int, 'rows_added': int, 'snapshot_id': int | str, 'table_location': str}`. `snapshot_id` is the string `'none'` when there is no snapshot. See [Registering Existing Parquet Files](#registering-existing-parquet-files).
 
+### `get_high_watermark()`
+
+Returns the maximum visible value of `column`, for filtering the source of an incremental load.
+
+```python
+def get_high_watermark(
+    table_identifier: tuple[str, str],
+    column: str,
+    catalog: Catalog,
+    *,
+    mode: Literal["auto", "metadata", "scan"] = "auto",
+) -> Any
+```
+
+The value is returned in the column's Python type, or `None` when the table has no rows or the
+column is all `NULL`. `metadata` raises `ValueError` when the column type or the table state makes
+the file bounds untrustworthy; `auto` falls back to a scan in those cases. See
+[Incremental Loading with a Watermark](#incremental-loading-with-a-watermark) for the trade-offs.
+
 ### Return value of the load functions
 
 ```python
@@ -659,7 +719,7 @@ For how the package is put together, see [Architecture](ARCHITECTURE.md).
 ## Public API & versioning
 
 - Semantic Versioning from `0.1.x`: MINOR = new compatible features, PATCH = fixes, MAJOR = breaking changes. Breaking changes to documented APIs are noted in `RELEASE.md`.
-- Public API: `LoaderConfig`, `IcebergLoader`, `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg`, `register_parquet_files`, `get_rest_catalog`, `expire_snapshots`. Data conversion helpers live in `iceberg_loader.utils.arrow`. Other modules are internal.
+- Public API: `LoaderConfig`, `IcebergLoader`, `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg`, `register_parquet_files`, `get_high_watermark`, `get_rest_catalog`, `expire_snapshots`. Data conversion helpers live in `iceberg_loader.utils.arrow`. Other modules are internal.
 - Pass loading options via `LoaderConfig`; avoid legacy positional arguments.
 - Prefer partition transforms for timestamps (`day(ts)`, `hour(ts)`, `day(_load_dttm)`) to avoid unbounded partition counts.
 - LoaderConfig validates partition expressions and forbids unsafe mixes (e.g., `replace_filter` with `upsert`, identity partition on `_load_dttm`).
