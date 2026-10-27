@@ -289,3 +289,107 @@ def test_partitioned_table_rejects_file_spanning_partitions(sql_catalog: SqlCata
         register_parquet_files([path], TID, sql_catalog)
 
     assert snapshot_ids(sql_catalog) == snapshots_before
+
+
+def with_field_ids(table: pa.Table, ids: dict[str, int]) -> pa.Table:
+    fields = [field.with_metadata({'PARQUET:field_id': str(ids[field.name])}) for field in table.schema]
+    return table.cast(pa.schema(fields))
+
+
+@pytest.mark.parametrize('ids', [{'id': 2, 'name': 1}, {'id': 7, 'name': 8}], ids=['swapped', 'foreign'])
+def test_file_with_embedded_field_ids_is_rejected(
+    sql_catalog: SqlCatalog,
+    tmp_path: Path,
+    ids: dict[str, int],
+) -> None:
+    seed_table(sql_catalog)
+    path = write_parquet(tmp_path, 'ids.parquet', with_field_ids(people([1], ['a']), ids))
+    snapshots_before = snapshot_ids(sql_catalog)
+
+    with pytest.raises(ValueError, match='embedded field IDs'):
+        register_parquet_files([path], TID, sql_catalog)
+
+    assert snapshot_ids(sql_catalog) == snapshots_before
+
+
+def test_partitioned_table_rejects_file_without_statistics(sql_catalog: SqlCatalog, tmp_path: Path) -> None:
+    create_day_partitioned_table(sql_catalog)
+    path = str(tmp_path / 'no-stats.parquet')
+    pq.write_table(events([1], [DAY_TWO_US]), path, write_statistics=False)
+    snapshots_before = snapshot_ids(sql_catalog)
+
+    with pytest.raises(ValueError, match="no min/max statistics for partition source column 'ts'"):
+        register_parquet_files([path], TID, sql_catalog)
+
+    assert snapshot_ids(sql_catalog) == snapshots_before
+
+
+def test_unpartitioned_table_accepts_file_without_statistics(sql_catalog: SqlCatalog, tmp_path: Path) -> None:
+    seed_table(sql_catalog)
+    path = str(tmp_path / 'no-stats.parquet')
+    pq.write_table(people([1], ['a']), path, write_statistics=False)
+
+    register_parquet_files([path], TID, sql_catalog)
+
+    assert read_rows(sql_catalog) == [{'id': 0, 'name': 'seed'}, {'id': 1, 'name': 'a'}]
+
+
+def test_path_and_file_uri_of_same_file_are_duplicates_in_one_call(sql_catalog: SqlCatalog, tmp_path: Path) -> None:
+    seed_table(sql_catalog)
+    path = write_parquet(tmp_path, 'alias.parquet', people([1], ['a']))
+
+    with pytest.raises(ValueError, match='refer to the same file'):
+        register_parquet_files([path, f'file://{path}'], TID, sql_catalog)
+
+
+def test_file_uri_of_registered_path_is_rejected(sql_catalog: SqlCatalog, tmp_path: Path) -> None:
+    seed_table(sql_catalog)
+    path = write_parquet(tmp_path, 'alias.parquet', people([1], ['a']))
+    register_parquet_files([path], TID, sql_catalog)
+    snapshots_before = snapshot_ids(sql_catalog)
+
+    with pytest.raises(ValueError, match='already referenced'):
+        register_parquet_files([f'file://{path}'], TID, sql_catalog)
+
+    assert snapshot_ids(sql_catalog) == snapshots_before
+    assert read_rows(sql_catalog) == [{'id': 0, 'name': 'seed'}, {'id': 1, 'name': 'a'}]
+
+
+def test_relative_path_is_rejected(sql_catalog: SqlCatalog, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seed_table(sql_catalog)
+    write_parquet(tmp_path, 'rel.parquet', people([1], ['a']))
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(ValueError, match='relative'):
+        register_parquet_files(['rel.parquet'], TID, sql_catalog)
+
+
+def test_single_string_instead_of_list_raises_type_error(sql_catalog: SqlCatalog, tmp_path: Path) -> None:
+    seed_table(sql_catalog)
+    path = write_parquet(tmp_path, 'one.parquet', people([1], ['a']))
+
+    with pytest.raises(TypeError, match='not a single string'):
+        register_parquet_files(path, TID, sql_catalog)
+
+
+def test_optional_file_column_for_required_table_column_names_file(sql_catalog: SqlCatalog, tmp_path: Path) -> None:
+    sql_catalog.create_table(TID, Schema(NestedField(1, 'id', LongType(), required=True)))
+    path = write_parquet(tmp_path, 'optional.parquet', pa.table({'id': pa.array([1], type=pa.int64())}))
+
+    with pytest.raises(
+        ValueError, match=r'stores required columns of table default\.events as optional: id'
+    ) as exc_info:
+        register_parquet_files([path], TID, sql_catalog)
+
+    assert path in str(exc_info.value)
+
+
+def test_nanosecond_timestamp_names_file_and_column(sql_catalog: SqlCatalog, tmp_path: Path) -> None:
+    load_data_to_iceberg(events([0], [DAY_ONE_US]), TID, sql_catalog, APPEND)
+    nanos = pa.table({'id': pa.array([1], pa.int64()), 'ts': pa.array([DAY_TWO_US * 1000], pa.timestamp('ns'))})
+    path = write_parquet(tmp_path, 'nanos.parquet', nanos)
+
+    with pytest.raises(ValueError, match="column 'ts' has nanosecond timestamps") as exc_info:
+        register_parquet_files([path], TID, sql_catalog)
+
+    assert path in str(exc_info.value)

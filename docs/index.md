@@ -342,11 +342,14 @@ result = register_parquet_files(
 ```
 
 - **Metadata-only:** the files are referenced by the table; they are not copied, converted, or moved. Their physical location must stay reachable by every reader for as long as the data is expected to be readable.
-- The table must already exist. Partitioned tables are supported: partition values are inferred from each file's Parquet statistics, so each file must stay within one partition. PyIceberg rejects a file that spans more than one partition and leaves no snapshot.
-- File schemas are read from Parquet footers before registration. Missing nullable columns are allowed and read as `NULL`; an unknown column or a missing required column raises `ValueError` naming the file and column.
+- The table must already exist. Partitioned tables are supported: partition values are inferred from each file's Parquet statistics, so each file must stay within one partition and must have min/max statistics for the partition source columns. A file without them raises `ValueError` (its partition value would be `NULL` and filtered reads would skip its rows); PyIceberg rejects a file that spans more than one partition.
+- Footers are read through the table's FileIO (so catalog S3 credentials apply) and every file is validated before anything is committed: one bad file leaves no snapshot.
+- Missing nullable columns are allowed and read as `NULL`. An unknown column, a missing required column, or a required column stored as optional raises `ValueError` naming the file and column.
+- Files with embedded Parquet field IDs (`PARQUET:field_id`, written by Iceberg/Spark writers) raise `ValueError`: PyIceberg maps them by ID, not by name, so columns could be read swapped or as `NULL`. Load such data with `load_data_to_iceberg` instead.
+- Nanosecond timestamps raise `ValueError` unless the table column is a nanosecond timestamp.
 - Column type compatibility follows PyIceberg's promotion rules (for example `int32` → `int64`); an incompatible type raises `ValueError` naming the file, column and both types. Nested and unmapped column types are left to PyIceberg's own validation.
-- `check_duplicate_files=True` (default) refuses files already referenced by the current snapshot. Passing `False` skips that check, logs a warning, and can duplicate rows.
-- Paths may be absolute local paths or `file://` URIs; they are stored in the table exactly as given. Relative paths resolve against the process working directory.
+- `check_duplicate_files=True` (default) refuses files already referenced by the current snapshot. Paths are compared after normalization, so `/data/a.parquet` and `file:///data/a.parquet` count as the same file, both within one call and against the table. Passing `False` skips the table check, logs a warning, and can duplicate rows.
+- Paths must be absolute local paths or URIs (`file://`, `s3://`, …); they are stored in the table exactly as given. Relative paths raise `ValueError`.
 - Use this for migration. Use `load_data_to_iceberg` when the data is in memory, needs schema evolution, or needs a write mode such as overwrite or upsert.
 
 ### Adding Load Timestamp

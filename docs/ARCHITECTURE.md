@@ -13,6 +13,7 @@ How `iceberg-loader` moves Arrow data through table setup, schema handling, and 
 | `SchemaManager` | `core/schema.py` | Table lifecycle: `ensure_table_exists()` (create with partition spec and properties, or load and check the format version), `evolve_schema_if_needed()` (add top-level columns), Arrow↔Iceberg schema conversion. |
 | `WriteStrategy` | `core/strategies.py` | `AppendStrategy`, `OverwriteStrategy` (overwrite on the first commit, append after), `IdempotentStrategy` (delete by `replace_filter` in the first commit, then append), `UpsertStrategy` (PyIceberg `table.upsert`). `get_write_strategy()` picks one. |
 | `LoaderConfig` | `core/config.py` | Frozen Pydantic model with all load options. Validates partition expressions and rejects unsafe combinations. `TABLE_PROPERTIES` holds the default table properties. |
+| `register_parquet_files` | `core/register.py` | Validates existing Parquet footers (schema, field IDs, partition statistics, paths) and references the files with `Table.add_files()` in one snapshot. |
 | Partitioning | `core/partitioning.py` | Parses `day(ts)`, `bucket(16, id)`, etc. into PyIceberg transforms. |
 | Arrow utilities | `utils/arrow.py` | `create_arrow_table_from_data` / `create_record_batches_from_dicts` (dicts → Arrow, nested values → JSON strings) and `convert_table_types` (cast to a target schema; a column whose safe cast fails becomes all NULL, with a warning). |
 | Type mappings | `utils/types.py` | `TypeRegistry`: Arrow↔Iceberg type mapping, extensible with `register_custom_mapping()`. |
