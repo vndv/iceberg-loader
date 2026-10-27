@@ -43,6 +43,7 @@ Then run examples from the same `examples/` directory (see commands below). With
 | [`load_from_polars.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_from_polars.py) | Polars `DataFrame` transform, loaded via `to_arrow()` |
 | [`load_pyarrow_dataset.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_pyarrow_dataset.py) | PyArrow `Dataset` streaming with `commit_interval` |
 | [`load_observability.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_observability.py) | Load timings and per-column cast counters |
+| [`register_parquet_files.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/register_parquet_files.py) | Register existing Parquet files without rewriting them |
 
 ## Running
 
@@ -68,6 +69,7 @@ python load_pyarrow_dataset.py
 python load_from_duckdb.py   # needs duckdb
 python load_from_polars.py   # needs polars
 python load_observability.py
+python register_parquet_files.py
 ```
 
 With [uv](https://docs.astral.sh/uv/):
@@ -87,6 +89,7 @@ uv run python load_pyarrow_dataset.py
 uv run --with duckdb python load_from_duckdb.py
 uv run --with polars python load_from_polars.py
 uv run python load_observability.py
+uv run python register_parquet_files.py
 ```
 
 ---

@@ -120,6 +120,9 @@ uv run python load_pyarrow_dataset.py
 
 # Load timings and cast counters in the result and METRIC log
 uv run python load_observability.py
+
+# Register existing Parquet files without rewriting them
+uv run python register_parquet_files.py
 ```
 
 Run the local smoke subset:
@@ -150,3 +153,4 @@ The smoke suite runs the fast examples against the bundled Docker stack, includi
 - `load_from_polars.py`: Polars `DataFrame` transform, loaded via `to_arrow()`.
 - `load_pyarrow_dataset.py`: PyArrow `Dataset` streaming through `load_batches_to_iceberg` with `commit_interval=2`.
 - `load_observability.py`: `conform_ms`/`write_ms`/`total_ms` timings and per-column `casts_*` counters.
+- `register_parquet_files.py`: register externally written Parquet files on S3, and the rejected duplicate registration.
