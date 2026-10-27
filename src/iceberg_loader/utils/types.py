@@ -27,12 +27,14 @@ class TypeRegistry:
     def _build_arrow_to_iceberg(self) -> dict[pa.DataType, IcebergType]:
         return {
             pa.string(): StringType(),
+            pa.large_string(): StringType(),
             pa.int32(): IntegerType(),
             pa.int64(): LongType(),
             pa.float32(): FloatType(),
             pa.float64(): DoubleType(),
             pa.bool_(): BooleanType(),
             pa.binary(): BinaryType(),
+            pa.large_binary(): BinaryType(),
             pa.date32(): DateType(),
             pa.timestamp('ns'): TimestampType(),
             pa.timestamp('ns', tz='UTC'): TimestamptzType(),
