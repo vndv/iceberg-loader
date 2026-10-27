@@ -1,4 +1,4 @@
 # SPDX-FileCopyrightText: 2025-present Ivan Matveev <vndvtech@gmail.com>
 #
 # SPDX-License-Identifier: MIT
-__version__ = '0.3.2'
+__version__ = '0.4.0'

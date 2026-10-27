@@ -1,4 +1,4 @@
-# Unreleased
+# Release 0.4.0 — 2026-10-27
 
 ## Highlights
 - **Logging**: the library no longer prints its own log lines. The `iceberg_loader` logger has only a `NullHandler` and propagates to the root logger, so messages follow the application's format and level. Table names in log messages read `db.table` instead of `('db', 'table')`. `configure_logging()` colors the level name when `stderr` is a terminal (`NO_COLOR` turns it off).
