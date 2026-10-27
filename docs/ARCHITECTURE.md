@@ -6,7 +6,7 @@ How `iceberg-loader` moves Arrow data through table setup, schema handling, and 
 
 | Component | Module | Role |
 |-----------|--------|------|
-| Public API | `iceberg_loader/__init__.py` | Re-exports `LoaderConfig`, `IcebergLoader`, the `load_*_to_iceberg` functions, `register_parquet_files`, `get_rest_catalog`, `expire_snapshots`, and the module-level `logger`. |
+| Public API | `iceberg_loader/__init__.py` | Re-exports `LoaderConfig`, `IcebergLoader`, the `load_*_to_iceberg` functions, `register_parquet_files`, `get_high_watermark`, `get_rest_catalog`, `expire_snapshots`, and the module-level `logger`. |
 | `load_*_to_iceberg` | `core/loader.py` | Thin wrappers: each call builds a new `IcebergLoader` with the given config and delegates to it. |
 | `IcebergLoader` | `core/loader.py` | Orchestrator. Resolves the effective config and table properties, buffers batches up to `commit_interval`, passes each buffer to `BatchConformer`, then writes it with a `WriteStrategy`. |
 | `BatchConformer` | `core/conform.py` | One instance per load. Owns the target table: loads or creates it, appends the load timestamp column, evolves the schema, and casts each buffer to the table schema. |
