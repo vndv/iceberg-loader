@@ -1,4 +1,4 @@
-# Unreleased
+# Release 0.3.2 — 2026-10-27
 
 ## Highlights
 - **Performance**: the conform stage is faster: the load timestamp column is built without a per-row Python list, and all new columns found in a buffer are added in one schema commit (a buffer that fails schema conversion now adds no columns; it used to leave the columns of earlier batches). On 200 × 10k-row batches with `commit_interval=50` and `load_timestamp` set, `conform_ms` drops from ~100 ms to ~5 ms (~190 ms to ~22 ms with `schema_evolution=True` and new columns in the buffer), and total load time by 25–30%.
