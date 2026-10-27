@@ -19,7 +19,7 @@ A change is done when `pytest` and the lint/format/types line are green. Run the
 
 ## Layout
 
-- `src/iceberg_loader/core/` — `loader.py` (`IcebergLoader`: buffers batches up to `commit_interval`, one commit per buffer), `conform.py` (`BatchConformer`: create/load table, load timestamp, schema evolution, casts), `strategies.py` (append / overwrite / idempotent replace / upsert), `schema.py` (`SchemaManager`), `config.py` (`LoaderConfig`, `TABLE_PROPERTIES`), `partitioning.py`.
+- `src/iceberg_loader/core/` — `loader.py` (`IcebergLoader`: buffers batches up to `commit_interval`, one commit per buffer; the result dict carries stage timings and cast counters), `conform.py` (`BatchConformer`: create/load table, load timestamp, schema evolution, casts), `strategies.py` (append / overwrite / idempotent replace / upsert), `schema.py` (`SchemaManager`), `config.py` (`LoaderConfig`, `TABLE_PROPERTIES`), `partitioning.py`, `register.py` (`register_parquet_files`: adds existing Parquet files without rewriting them), `watermark.py` (`get_high_watermark`).
 - `src/iceberg_loader/utils/` — dict→Arrow helpers and casts (`arrow.py`), Arrow↔Iceberg type mappings (`types.py`).
 - `src/iceberg_loader/services/` — package logger (`logging.py`), `expire_snapshots` (`maintenance.py`).
 - `src/iceberg_loader/catalog.py` — `get_rest_catalog()`.
@@ -46,6 +46,9 @@ Data flow, module dependencies, and a "where to make changes" table: `docs/ARCHI
 - A string column partitioned with `year`/`month`/`day`/`hour` is promoted to `timestamp(us)` at table creation, so `replace_filter` on it needs a timestamp literal (`'2023-01-01T00:00:00'`).
 - `replace_filter` and `write_mode='upsert'` are mutually exclusive; upsert needs `join_cols`.
 - Identity partitioning on the load timestamp column (`_load_dttm`) is rejected; use `day(...)` or `hour(...)`.
+- Load results gain keys as features land (timings, cast counters); in tests assert on specific keys, not on the whole dict with `==`.
+- `register_parquet_files` references files in place: the table does not own them, and re-registering the same paths is rejected unless `check_duplicate_files=False`, which duplicates rows.
+- `get_high_watermark(mode='metadata')` raises instead of guessing for string/binary columns or tables with delete files; `auto` falls back to a scan.
 
 ## Releases
 

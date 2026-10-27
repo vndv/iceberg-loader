@@ -1,10 +1,18 @@
-# Unreleased
+# Release 0.3.0 — 2026-10-27
 
 ## Highlights
 - Arrow `large_string` and `large_binary` types now map to Iceberg `string` and `binary`, so Polars `to_arrow()` output with top-level string/binary columns loads without a manual cast. Nested and dictionary types (`large_list`, Categorical) are still unsupported.
-- **Observability**: Load results now include `conform_ms`, `write_ms`, `total_ms` stage timings and `casts_applied`, `casts_lossy`, `casts_failed` cast counters. Cast counters count distinct columns per load. Each load also emits one `METRIC: load_completed` info log with the same values. Code that compares the whole result dict with `==` needs the new keys.
+- **Observability**: Load results now include `conform_ms`, `write_ms`, `total_ms` stage timings and `casts_applied`, `casts_lossy`, `casts_failed` cast counters. Cast counters count distinct columns per load. Each load also emits one `METRIC: load_completed` info log with the same values.
 - **New API**: `register_parquet_files()` registers existing Parquet files as Iceberg data files without rewriting them. It validates every footer before committing (unknown, missing or optional-but-required columns, embedded field IDs, nanosecond timestamps, missing partition statistics, relative and aliased paths), follows PyIceberg's type-promotion rules, supports partitioned tables when each file stays within one partition, and returns `files_added`, `rows_added`, `snapshot_id`, and `table_location`. Passing `check_duplicate_files=False` logs a warning and can duplicate rows.
 - **New helper**: `get_high_watermark()` returns the maximum visible value of a column so callers can filter an incremental source with `> watermark`. `auto`/`metadata`/`scan` modes trade manifest-only reads for exact scans and fail loud when metadata bounds cannot be trusted.
+
+## Breaking Changes
+- **Load result dict has new keys**: `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg` and the `IcebergLoader` load methods now return `conform_ms`, `write_ms`, `total_ms`, `casts_applied`, `casts_lossy` and `casts_failed` in addition to the previous keys. Code that compares the whole result with `==` or validates it against a fixed set of keys must be updated; reading individual keys is unaffected.
+
+## Test Plan
+- `uv run pytest -v`
+- `uv run ruff check . && uv run ruff format --check . && uv run ty check`
+- `bash tools/run_examples_smoke.sh`
 
 # Release 0.2.0 — 2026-10-26
 
