@@ -105,11 +105,11 @@ commands = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/vndvtech/iceberg-loader"
-Documentation = "https://vndvtech.github.io/iceberg-loader/"
-Repository = "https://github.com/vndvtech/iceberg-loader"
-"Bug Tracker" = "https://github.com/vndvtech/iceberg-loader/issues"
-Changelog = "https://github.com/vndvtech/iceberg-loader/releases"
+Homepage = "https://github.com/vndv/iceberg-loader"
+Documentation = "https://vndv.github.io/iceberg-loader/"
+Repository = "https://github.com/vndv/iceberg-loader"
+"Bug Tracker" = "https://github.com/vndv/iceberg-loader/issues"
+Changelog = "https://github.com/vndv/iceberg-loader/releases"
 
 [tool.uv.build-backend]
 module-name = "iceberg_loader"
