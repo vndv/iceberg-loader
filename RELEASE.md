@@ -1,3 +1,8 @@
+# Unreleased
+
+## Highlights
+- **Fix**: `expire_snapshots` computed its cutoff as naive local time, which PyIceberg reads as UTC, so on hosts outside UTC the cutoff shifted by the UTC offset (on UTC+3, snapshots up to 3 hours newer than intended were expired, including ones `keep_last` should keep). The cutoff is now UTC-aware; hosts running in UTC see no change.
+
 # Release 0.3.2 — 2026-10-27
 
 ## Highlights

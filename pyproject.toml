@@ -169,11 +169,18 @@ exclude = [
   "site-packages",
   "venv",
   "examples",
+  "local",
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "N", "TID", "S", "C4", "PIE", "RET", "PTH", "RUF"]
+select = [
+  "E", "F", "I", "UP", "B", "SIM", "N", "TID", "S", "C4", "PIE", "RET", "PTH", "RUF",
+  "PERF", "ASYNC", "C90", "PL", "DTZ",
+]
 ignore = ["BLE001", "UP017"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 11
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
@@ -185,6 +192,10 @@ ignore = ["BLE001", "UP017"]
     "D101",
     "D102",
     "PLR2004",
+    "PLC0415",
+    # Tests build naive timestamp('us') columns on purpose; tz-aware values would change the column type.
+    "DTZ001",
+    "DTZ005",
 ]
 "docs/examples/*" = [
     "D103",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 
 from pyiceberg.transforms import (
     BucketTransform,
@@ -16,6 +17,16 @@ from pyiceberg.transforms import (
 from pyiceberg.types import DateType, TimestampType, TimestamptzType
 
 _PARTITION_PATTERN = re.compile(r'(\w+)\((.+)\)')
+_PARAM_TRANSFORM_ARGS = 2
+
+_SIMPLE_TRANSFORMS: dict[str, Callable[[], Transform]] = {
+    'identity': IdentityTransform,
+    'year': YearTransform,
+    'month': MonthTransform,
+    'day': DayTransform,
+    'hour': HourTransform,
+    'void': VoidTransform,
+}
 
 
 def parse_partition_transform(partition_str: str) -> tuple[str, str, int | None]:
@@ -53,7 +64,7 @@ def parse_partition_transform(partition_str: str) -> tuple[str, str, int | None]
 
 
 def _parse_param_transform(func_name: str, args: list[str]) -> tuple[str, str, int]:
-    if len(args) != 2:
+    if len(args) != _PARAM_TRANSFORM_ARGS:
         raise ValueError(f"Transform '{func_name}' expects 2 arguments (param, col), got {len(args)}")
     try:
         param = int(args[0])
@@ -63,16 +74,8 @@ def _parse_param_transform(func_name: str, args: list[str]) -> tuple[str, str, i
 
 
 def get_transform_impl(transform_name: str, param: int | None) -> Transform:
-    if transform_name == 'identity':
-        return IdentityTransform()
-    if transform_name == 'year':
-        return YearTransform()
-    if transform_name == 'month':
-        return MonthTransform()
-    if transform_name == 'day':
-        return DayTransform()
-    if transform_name == 'hour':
-        return HourTransform()
+    if transform_name in _SIMPLE_TRANSFORMS:
+        return _SIMPLE_TRANSFORMS[transform_name]()
     if transform_name == 'bucket':
         if param is None:
             raise ValueError('Bucket transform requires a width parameter')
@@ -81,8 +84,6 @@ def get_transform_impl(transform_name: str, param: int | None) -> Transform:
         if param is None:
             raise ValueError('Truncate transform requires a width parameter')
         return TruncateTransform(width=param)
-    if transform_name == 'void':
-        return VoidTransform()
     raise ValueError(f'Unsupported transform implementation: {transform_name}')
 
 

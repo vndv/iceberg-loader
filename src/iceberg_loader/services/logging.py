@@ -133,7 +133,8 @@ def configure_logging(
     version: Mapping[str, str] | None = None,
 ) -> Logger:
     """Initializes the global logger."""
-    global LOGGER
+    # metrics() and tests read the module-level LOGGER; replacing the singleton would change that contract.
+    global LOGGER  # noqa: PLW0603
 
     logger = logging.getLogger('iceberg_loader')
     logger.setLevel(level.upper())

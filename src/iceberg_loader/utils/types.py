@@ -17,6 +17,9 @@ from pyiceberg.types import (
     UnknownType,
 )
 
+_INT64_BITS = 64
+_INT32_BITS = 32
+
 
 class TypeRegistry:
     def __init__(self) -> None:
@@ -74,17 +77,10 @@ class TypeRegistry:
             return self._arrow_to_iceberg[arrow_type]
 
         if pa.types.is_integer(arrow_type):
-            bit_width = getattr(arrow_type, 'bit_width', None)
-            if pa.types.is_unsigned_integer(arrow_type) and bit_width == 64:
-                return DecimalType(20, 0)
-            if bit_width and bit_width > 32:
-                return LongType()
-            return IntegerType()
+            return self._integer_type(arrow_type)
 
         if pa.types.is_timestamp(arrow_type):
-            if arrow_type.tz is not None:
-                return TimestamptzType()
-            return TimestampType()
+            return TimestamptzType() if arrow_type.tz is not None else TimestampType()
 
         if pa.types.is_decimal(arrow_type):
             precision = getattr(arrow_type, 'precision', 38)
@@ -92,6 +88,15 @@ class TypeRegistry:
             return DecimalType(precision=precision, scale=scale)
 
         raise ValueError(f'Unsupported PyArrow type: {arrow_type}')
+
+    @staticmethod
+    def _integer_type(arrow_type: pa.DataType) -> IcebergType:
+        bit_width = getattr(arrow_type, 'bit_width', None)
+        if pa.types.is_unsigned_integer(arrow_type) and bit_width == _INT64_BITS:
+            return DecimalType(20, 0)
+        if bit_width and bit_width > _INT32_BITS:
+            return LongType()
+        return IntegerType()
 
     def get_arrow_type(self, iceberg_type_instance: IcebergType) -> pa.DataType:
         if isinstance(iceberg_type_instance, DecimalType):

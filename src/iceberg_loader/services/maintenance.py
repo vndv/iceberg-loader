@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pyiceberg.exceptions import CommitFailedException as IcebergError
@@ -28,7 +28,7 @@ class SnapshotMaintenance:
 
             if older_than_ms is not None:
                 should_expire = True
-                cutoff_datetime = datetime.fromtimestamp(older_than_ms / 1000.0)
+                cutoff_datetime = datetime.fromtimestamp(older_than_ms / 1000.0, tz=timezone.utc)
                 logger.info('Expiring snapshots older than %s (ms=%d)', cutoff_datetime, older_than_ms)
                 expire = expire.older_than(cutoff_datetime)
             else:
@@ -64,7 +64,7 @@ class SnapshotMaintenance:
 
         sorted_snapshots = sorted(snapshots, key=lambda s: s.timestamp_ms)
         cutoff_snapshot = sorted_snapshots[-keep_last]
-        cutoff_datetime = datetime.fromtimestamp((cutoff_snapshot.timestamp_ms - 1) / 1000.0)
+        cutoff_datetime = datetime.fromtimestamp((cutoff_snapshot.timestamp_ms - 1) / 1000.0, tz=timezone.utc)
 
         logger.info(
             'Expiring snapshots older than %s to keep last %d snapshot(s)',
