@@ -101,6 +101,16 @@ def test_schema_evolution_adds_new_column_midstream(sql_catalog: SqlCatalog, com
     assert result['new_table_created'] is True
 
 
+def test_schema_evolution_failed_cast_nulls_only_its_batch(sql_catalog: SqlCatalog) -> None:
+    load_data_to_iceberg(pa.table({'id': [0], 'n': [0]}), TID, sql_catalog, APPEND)
+    batches = [batch(id=[1], n=['123']), batch(id=[2], n=['invalid'])]
+    config = LoaderConfig(write_mode='append', schema_evolution=True, commit_interval=2)
+
+    load_batches_to_iceberg(iter(batches), TID, sql_catalog, config)
+
+    assert read_rows(sql_catalog) == [{'id': 0, 'n': 0}, {'id': 1, 'n': 123}, {'id': 2, 'n': None}]
+
+
 def test_mixed_buffer_without_schema_evolution_drops_unknown_columns(sql_catalog: SqlCatalog) -> None:
     batches = [batch(id=[1], v=['a']), batch(extra=['x'], id=[2]), batch(v=['c'], id=[3])]
 
