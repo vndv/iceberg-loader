@@ -1,6 +1,8 @@
 # Unreleased
 
 ## Highlights
+- Arrow `large_string` and `large_binary` types now map to Iceberg `string` and `binary`, so Polars `to_arrow()` output with top-level string/binary columns loads without a manual cast. Nested and dictionary types (`large_list`, Categorical) are still unsupported.
+- **Observability**: Load results now include `conform_ms`, `write_ms`, `total_ms` stage timings and `casts_applied`, `casts_lossy`, `casts_failed` cast counters. Cast counters count distinct columns per load. Each load also emits one `METRIC: load_completed` info log with the same values. Code that compares the whole result dict with `==` needs the new keys.
 - **New API**: `register_parquet_files()` registers existing Parquet files as Iceberg data files without rewriting them. It validates every footer before committing (unknown, missing or optional-but-required columns, embedded field IDs, nanosecond timestamps, missing partition statistics, relative and aliased paths), follows PyIceberg's type-promotion rules, supports partitioned tables when each file stays within one partition, and returns `files_added`, `rows_added`, `snapshot_id`, and `table_location`. Passing `check_duplicate_files=False` logs a warning and can duplicate rows.
 
 # Release 0.2.0 — 2026-10-26

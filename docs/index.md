@@ -431,7 +431,7 @@ To route messages through your own handlers instead, configure first, then adjus
 ### Schema and types
 
 - `schema_evolution=False` (the default): columns that are not in the table are **dropped silently**. Columns missing from the data are written as NULL.
-- With `schema_evolution=False` and `commit_interval > 1`, all batches in one commit must have the same schema, including column order; otherwise the load fails with `pyarrow.lib.ArrowInvalid`. Enable `schema_evolution` or keep batch schemas identical.
+- With `schema_evolution=False` and `commit_interval > 1`, all batches in one commit must have the same schema, including column order and `string` vs `large_string`; otherwise the load fails with `pyarrow.lib.ArrowInvalid`. Enable `schema_evolution` or keep batch schemas identical.
 - `schema_evolution=True` adds new top-level columns only. It does not change existing column types.
 - Data is cast to the table's column types. If a safe cast fails for **any** value in a column, the **whole column of that commit** is written as NULL, and a warning naming the column is logged.
 - Lossy casts that PyArrow can perform unsafely go through **without a warning**: floats are truncated to integers (`1.9 → 1`), and integer overflow wraps (`int64 → int32`). The only lossy cast that warns is timestamp precision loss (e.g. ns → us).
@@ -585,10 +585,21 @@ Returns `{'files_added': int, 'rows_added': int, 'snapshot_id': int | str, 'tabl
     'table_location': str,       # the string 'none' when no batches were loaded
     'snapshot_id': int | str,    # the string 'none' when there is no snapshot
     'new_table_created': bool,
+    'conform_ms': float,         # conforming batches: table load/create, schema evolution commits, casts
+    'write_ms': float,           # writing and committing batches
+    'total_ms': float,           # the whole load, excluding config resolution
+    'casts_applied': int,        # columns successfully cast (including lossy)
+    'casts_lossy': int,          # subset of applied that only succeeded in unsafe mode (truncated or wrapped values)
+    'casts_failed': int,         # columns with a failed cast, filled with NULLs
 }
 ```
 
 Note that the "empty" values are the string `'none'`, not `None`.
+
+- **Timings:** `total_ms - conform_ms - write_ms` is mostly the time spent reading the input (a generator, an IPC stream) plus the final snapshot lookup, so a slow source shows up there, not in `write_ms`.
+- **Cast counters** count distinct columns per load, not rows, batches, or buffers: a column cast in every batch counts once, regardless of `commit_interval`, `schema_evolution`, or how the input is chunked. `casts_lossy` covers timestamp precision loss, float→int truncation, and integer overflow (wrapped values). A column whose batches behaved differently can be counted in both `casts_applied` and `casts_failed`.
+
+Each successful load emits one `METRIC: load_completed` info log with the same timing and cast fields. A load that raises emits no metric.
 
 ### Usage Examples
 
