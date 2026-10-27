@@ -11,6 +11,7 @@ from iceberg_loader.core import (
     load_batches_to_iceberg,
     load_data_to_iceberg,
     load_ipc_stream_to_iceberg,
+    register_parquet_files,
 )
 from iceberg_loader.services.maintenance import expire_snapshots
 
@@ -24,4 +25,5 @@ __all__ = [
     'load_data_to_iceberg',
     'load_ipc_stream_to_iceberg',
     'logger',
+    'register_parquet_files',
 ]

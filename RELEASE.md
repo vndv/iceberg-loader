@@ -1,3 +1,8 @@
+# Unreleased
+
+## Highlights
+- **New API**: `register_parquet_files()` registers existing Parquet files as Iceberg data files without rewriting them. It validates file schemas from Parquet footers (unknown and missing required columns), follows PyIceberg's type-promotion rules, supports partitioned tables when each file stays within one partition, and returns `files_added`, `rows_added`, `snapshot_id`, and `table_location`. Passing `check_duplicate_files=False` logs a warning and can duplicate rows.
+
 # Release 0.2.0 — 2026-10-26
 
 ## Highlights
