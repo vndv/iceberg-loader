@@ -48,7 +48,8 @@ class SchemaManager:
         try:
             table = self.catalog.load_table(table_identifier)
         except (FileNotFoundError, ValueError, NoSuchTableError):
-            logger.info('Table %s not found, creating new table.', table_identifier)
+            name = table_identifier if isinstance(table_identifier, str) else '.'.join(table_identifier)
+            logger.info('Table %s not found, creating new table.', name)
 
             properties = table_properties if table_properties is not None else self.table_properties
             new_version = _parse_format_version(properties.get('format-version'))

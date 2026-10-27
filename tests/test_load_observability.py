@@ -1,5 +1,7 @@
+import io
 import logging
-from collections.abc import Callable
+import sys
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import pyarrow as pa
@@ -76,14 +78,14 @@ def test_load_completed_metric_is_logged(
     loader_warnings: Callable[[], list[str]],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    caplog.set_level(logging.INFO, logger='iceberg_loader')
+    caplog.set_level(logging.DEBUG, logger='iceberg_loader')
 
     result = load_data_to_iceberg(pa.table({'id': [1, 2]}), TID, sql_catalog, APPEND)
 
     records = [record for record in caplog.records if record.getMessage() == 'METRIC: load_completed']
     assert len(records) == 1
     record = records[0]
-    assert record.levelno == logging.INFO
+    assert record.levelno == logging.DEBUG
     payload: dict[str, Any] = record.__dict__['metrics']
     assert set(payload) == {
         'rows_loaded',
@@ -108,18 +110,40 @@ def test_load_completed_metric_is_logged(
     assert loader_warnings() == []
 
 
-def test_metrics_emits_when_logger_was_not_configured() -> None:
+@pytest.fixture()
+def restore_loader_logger() -> Iterator[logging.Logger]:
+    """Restores the iceberg_loader logger and the module-level LOGGER that a test reconfigures."""
     import iceberg_loader.services.logging as logging_mod
 
-    previous = logging_mod.LOGGER
-    logging_mod.LOGGER = None
+    loader_logger = logging.getLogger('iceberg_loader')
+    saved = (logging_mod.LOGGER, loader_logger.handlers[:], loader_logger.propagate, loader_logger.level)
     try:
-        logging_mod.metrics('load_completed', {'rows_loaded': 0})
-        assert logging_mod.LOGGER is not None
+        yield loader_logger
     finally:
-        logging_mod.LOGGER = previous
-        if logging_mod.LOGGER is None:
-            logging_mod.get_logger()
+        logging_mod.LOGGER, loader_logger.handlers, loader_logger.propagate, level = saved
+        loader_logger.setLevel(level)
+
+
+def test_unconfigured_logger_propagates_to_root_without_own_output(
+    restore_loader_logger: logging.Logger,
+    caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import iceberg_loader.services.logging as logging_mod
+
+    # Default state on import, as if configure_logging() had never run (another test module calls it).
+    logging_mod.LOGGER = None
+    restore_loader_logger.handlers = [logging.NullHandler()]
+    restore_loader_logger.propagate = True
+    restore_loader_logger.setLevel(logging.NOTSET)
+    caplog.set_level(logging.DEBUG)
+
+    logging_mod.metrics('load_completed', {'rows_loaded': 0})
+    logging_mod.info('hello')
+
+    assert [r.getMessage() for r in caplog.records] == ['METRIC: load_completed', 'hello']
+    assert logging_mod.LOGGER is None
+    assert capsys.readouterr().err == ''
 
 
 def float_batches(count: int) -> list[pa.RecordBatch]:
@@ -174,3 +198,49 @@ def test_counters_and_timings_in_every_write_mode(sql_catalog: SqlCatalog, confi
     assert (result['casts_applied'], result['casts_lossy'], result['casts_failed']) == (1, 1, 0)
     assert 0 <= result['conform_ms'] + result['write_ms'] <= result['total_ms']
     assert sorted(row['v'] for row in read_rows(sql_catalog) if row['id'] in (1, 2)) == [1, 2]
+
+
+class _TTY(io.StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
+def _record(level: int) -> logging.LogRecord:
+    return logging.LogRecord('iceberg_loader', level, __file__, 1, 'hello', None, None)
+
+
+def test_text_formatter_colors_level_name_without_touching_the_record() -> None:
+    import iceberg_loader.services.logging as logging_mod
+
+    record = _record(logging.WARNING)
+    colored = logging_mod.TextFormatter(fmt='[{levelname}] {message}', style='{', use_color=True).format(record)
+    plain = logging_mod.TextFormatter(fmt='[{levelname}] {message}', style='{').format(record)
+
+    assert colored == '[\x1b[33mWARNING\x1b[0m] hello'
+    assert plain == '[WARNING] hello'
+    assert record.levelname == 'WARNING'
+
+
+@pytest.mark.parametrize(
+    ('stream', 'no_color', 'expect_color'),
+    [(_TTY(), None, True), (_TTY(), '1', False), (io.StringIO(), None, False)],
+)
+def test_configure_logging_colors_only_a_terminal_without_no_color(
+    restore_loader_logger: logging.Logger,
+    monkeypatch: pytest.MonkeyPatch,
+    stream: io.StringIO,
+    no_color: str | None,
+    expect_color: bool,
+) -> None:
+    import iceberg_loader.services.logging as logging_mod
+
+    monkeypatch.setattr(sys, 'stderr', stream)
+    if no_color is None:
+        monkeypatch.delenv('NO_COLOR', raising=False)
+    else:
+        monkeypatch.setenv('NO_COLOR', no_color)
+
+    logging_mod.configure_logging()
+    logging_mod.info('hello')
+
+    assert ('\x1b[32mINFO\x1b[0m' in stream.getvalue()) is expect_color

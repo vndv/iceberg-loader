@@ -31,7 +31,7 @@ Data flow, module dependencies, and a "where to make changes" table: `docs/ARCHI
 ## Conventions
 
 - Style is enforced by ruff (`pyproject.toml`): single quotes, 120-char lines.
-- Log through the package logger: `from iceberg_loader.services.logging import logger`. It does not propagate to root, so in tests read warnings with the `loader_warnings` fixture, not bare `caplog`.
+- Log through the package logger: `from iceberg_loader.services.logging import logger`. It has only a `NullHandler` and propagates to root, but `configure_logging()` (called by some test modules) turns propagation off, so in tests read warnings with the `loader_warnings` fixture, not bare `caplog`.
 - Tests run against a real sqlite-backed catalog: the `sql_catalog` fixture in `tests/conftest.py`. Assert on table contents and snapshots, not on mocks.
 - Every load option goes through `LoaderConfig`; new options are added there with validation.
 - User-visible behavior changes get a line in the `Unreleased` section of `RELEASE.md`; breaking ones go under `Breaking Changes`.

@@ -1,7 +1,12 @@
 # Unreleased
 
 ## Highlights
+- **Logging**: the library no longer prints its own log lines. The `iceberg_loader` logger has only a `NullHandler` and propagates to the root logger, so messages follow the application's format and level. Table names in log messages read `db.table` instead of `('db', 'table')`. `configure_logging()` colors the level name when `stderr` is a terminal (`NO_COLOR` turns it off).
 - **Fix**: `expire_snapshots` computed its cutoff as naive local time, which PyIceberg reads as UTC, so on hosts outside UTC the cutoff shifted by the UTC offset (on UTC+3, snapshots up to 3 hours newer than intended were expired, including ones `keep_last` should keep). The cutoff is now UTC-aware; hosts running in UTC see no change.
+
+## Breaking Changes
+- **Logging defaults**: on first use the library used to attach its own `stderr` handler at `INFO` with `propagate=False`. It now attaches nothing: without `logging.basicConfig(...)` or similar, only warnings and errors are shown (Python's last-resort handler). Call `configure_logging()` to get the old stderr output back.
+- **`METRIC: load_completed` is logged at `DEBUG`** instead of `INFO`. The same values are in the load result dict.
 
 # Release 0.3.2 — 2026-10-27
 

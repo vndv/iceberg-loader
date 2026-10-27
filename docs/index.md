@@ -445,7 +445,16 @@ loader.load_data(arrow_table, ("db", "users"), config=LoaderConfig(write_mode="o
 
 ### Logging
 
-The library logs to the `iceberg_loader` logger. On first use it sets that logger to `INFO`, attaches its own `stderr` handler, and sets `propagate=False`, so messages do not reach your root logger handlers. To change the level or switch to JSON output, call `configure_logging` before loading:
+The library logs to the `iceberg_loader` logger and, like other libraries, prints nothing on its own: records propagate to your application's logging setup, which controls format and level. Without any configuration, Python shows only warnings and errors.
+
+```python
+import logging
+
+logging.basicConfig(level=logging.INFO)                    # library INFO messages in your format
+logging.getLogger("iceberg_loader").setLevel(logging.DEBUG)  # also the METRIC: load_completed line
+```
+
+If you want the library's own `stderr` handler instead (TEXT or JSON), call `configure_logging` before loading. It attaches that handler and sets `propagate=False`, so messages no longer reach your root handlers:
 
 ```python
 from iceberg_loader.services.logging import configure_logging
@@ -453,7 +462,7 @@ from iceberg_loader.services.logging import configure_logging
 configure_logging(level="WARNING", log_format="JSON")
 ```
 
-To route messages through your own handlers instead, configure first, then adjust the logger it returns (for example, clear its handlers and set `propagate = True`).
+In `TEXT` format the level name is colored when `stderr` is a terminal; set `NO_COLOR=1` to turn that off. Redirected output (files, CI logs) stays plain.
 
 ---
 
@@ -664,7 +673,7 @@ Note that the "empty" values are the string `'none'`, not `None`.
 - **Timings:** `total_ms - conform_ms - write_ms` is mostly the time spent reading the input (a generator, an IPC stream) plus the final snapshot lookup, so a slow source shows up there, not in `write_ms`.
 - **Cast counters** count distinct columns per load, not rows, batches, or buffers: a column cast in every batch counts once, regardless of `commit_interval`, `schema_evolution`, or how the input is chunked. `casts_lossy` covers timestamp precision loss, float→int truncation, and integer overflow (wrapped values). A column whose batches behaved differently can be counted in both `casts_applied` and `casts_failed`.
 
-Each successful load emits one `METRIC: load_completed` info log with the same timing and cast fields. A load that raises emits no metric.
+Each successful load emits one `METRIC: load_completed` debug log with the same timing and cast fields. A load that raises emits no metric.
 
 ### Usage Examples
 
