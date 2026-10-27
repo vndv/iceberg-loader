@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from pyiceberg.utils.datetime import datetime_to_millis
+
 from iceberg_loader.services.maintenance import SnapshotMaintenance, expire_snapshots
 
 
@@ -15,7 +17,9 @@ class FakeExpire:
         self.cutoff_ms: int | None = None
 
     def older_than(self, dt: datetime) -> 'FakeExpire':
-        self.cutoff_ms = int(dt.timestamp() * 1000)
+        # pyiceberg reads a naive datetime as UTC, so a naive local cutoff shifts on non-UTC hosts.
+        assert dt.tzinfo is not None
+        self.cutoff_ms = datetime_to_millis(dt)
         return self
 
     def commit(self) -> None:

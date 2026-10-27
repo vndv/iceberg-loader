@@ -22,10 +22,19 @@ def sql_catalog(tmp_path: Path) -> SqlCatalog:
 
 @pytest.fixture()
 def loader_warnings(caplog: pytest.LogCaptureFixture) -> Iterator[Callable[[], list[str]]]:
-    """Returns WARNING+ messages from the iceberg_loader logger, which does not propagate to root."""
+    """Returns WARNING+ messages from the iceberg_loader logger.
+
+    configure_logging() (called by some test modules) turns propagation off, so it is forced on for the test:
+    caplog's handler sits on the root logger.
+    """
     loader_logger = get_logger()
-    loader_logger.addHandler(caplog.handler)
+    propagate = loader_logger.propagate
+    loader_logger.propagate = True
     try:
-        yield lambda: [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+        yield lambda: [
+            r.getMessage()
+            for r in caplog.records
+            if r.levelno >= logging.WARNING and r.name.startswith('iceberg_loader')
+        ]
     finally:
-        loader_logger.removeHandler(caplog.handler)
+        loader_logger.propagate = propagate

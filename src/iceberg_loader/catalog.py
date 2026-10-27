@@ -11,7 +11,8 @@ import os
 from pyiceberg.catalog.rest import RestCatalog
 
 
-def get_rest_catalog(
+# Public API (exported from iceberg_loader): every option is a keyword argument; bundling them would break callers.
+def get_rest_catalog(  # noqa: PLR0913
     name: str = 'rest-catalog',
     *,
     uri: str | None = None,

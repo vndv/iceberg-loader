@@ -4,12 +4,13 @@ from typing import Any, BinaryIO
 
 import pyarrow as pa
 from pyiceberg.catalog import Catalog
+from pyiceberg.exceptions import NoSuchTableError
 
 from iceberg_loader.core.config import TABLE_PROPERTIES, LoaderConfig, ensure_loader_config
 from iceberg_loader.core.conform import BatchConformer
 from iceberg_loader.core.schema import SchemaManager
-from iceberg_loader.core.strategies import get_write_strategy
-from iceberg_loader.services.logging import metrics
+from iceberg_loader.core.strategies import WriteStrategy, get_write_strategy
+from iceberg_loader.services.logging import logger, metrics
 
 
 class IcebergLoader:
@@ -48,9 +49,8 @@ class IcebergLoader:
         Load PyArrow Table into Iceberg table.
         Delegates to load_data_batches for consistency.
         """
-        batches = table_data.to_batches()
         return self.load_data_batches(
-            batch_iterator=iter(batches),
+            batch_iterator=table_data.to_reader(),
             table_identifier=table_identifier,
             config=config,
         )
@@ -107,24 +107,33 @@ class IcebergLoader:
         write_ms = 0.0
         is_first_write = True
         for buffer in _buffered(batch_iterator, max(1, effective_config.commit_interval)):
-            conform_start = time.perf_counter()
-            data = conformer.conform(buffer)
-            conform_ms += (time.perf_counter() - conform_start) * 1000
-
-            write_start = time.perf_counter()
-            strategy.write(conformer.table, data, is_first_write)
-            write_ms += (time.perf_counter() - write_start) * 1000
-
+            rows, buffer_conform_ms, buffer_write_ms = _write_buffer(conformer, strategy, buffer, is_first_write)
+            conform_ms += buffer_conform_ms
+            write_ms += buffer_write_ms
             is_first_write = False
             batches_processed += len(buffer)
-            total_rows += len(data)
+            total_rows += rows
 
-        # conformer.table stays None when the iterator yielded no batches.
+        table = conformer.table
+        if table is None:
+            if isinstance(batch_iterator, pa.RecordBatchReader):
+                # No batches, but the schema is known: write an empty table, so the table is created,
+                # overwrite clears it and replace_filter deletes the matching rows.
+                empty = [pa.RecordBatch.from_pylist([], schema=batch_iterator.schema)]
+                _, conform_ms, write_ms = _write_buffer(conformer, strategy, empty, is_first_write)
+                table = conformer.table
+            else:
+                table = self._load_existing_table(table_identifier)
+                logger.warning(
+                    'Load into %s got no batches and no schema: nothing was written, an existing table is unchanged.',
+                    '.'.join(table_identifier),
+                )
+
         snapshot_id = 'none'
         table_loc = 'none'
-        if conformer.table is not None:
-            table_loc = conformer.table.location()
-            current_snap = conformer.table.current_snapshot()
+        if table is not None:
+            table_loc = table.location()
+            current_snap = table.current_snapshot()
             if current_snap:
                 snapshot_id = current_snap.snapshot_id
 
@@ -167,6 +176,26 @@ class IcebergLoader:
             'casts_lossy': casts_lossy,
             'casts_failed': casts_failed,
         }
+
+    def _load_existing_table(self, table_identifier: tuple[str, str]) -> Any | None:
+        try:
+            return self.catalog.load_table(table_identifier)
+        except NoSuchTableError:
+            return None
+
+
+def _write_buffer(
+    conformer: BatchConformer, strategy: WriteStrategy, buffer: list[pa.RecordBatch], is_first_write: bool
+) -> tuple[int, float, float]:
+    """Conforms and writes one buffer; returns rows written, conform ms and write ms."""
+    conform_start = time.perf_counter()
+    data = conformer.conform(buffer)
+    conform_ms = (time.perf_counter() - conform_start) * 1000
+
+    write_start = time.perf_counter()
+    strategy.write(conformer.table, data, is_first_write)
+    write_ms = (time.perf_counter() - write_start) * 1000
+    return len(data), conform_ms, write_ms
 
 
 def _buffered(batches: Iterable[pa.RecordBatch], size: int) -> Iterator[list[pa.RecordBatch]]:

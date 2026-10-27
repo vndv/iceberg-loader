@@ -445,7 +445,16 @@ loader.load_data(arrow_table, ("db", "users"), config=LoaderConfig(write_mode="o
 
 ### Logging
 
-The library logs to the `iceberg_loader` logger. On first use it sets that logger to `INFO`, attaches its own `stderr` handler, and sets `propagate=False`, so messages do not reach your root logger handlers. To change the level or switch to JSON output, call `configure_logging` before loading:
+The library logs to the `iceberg_loader` logger and, like other libraries, prints nothing on its own: records propagate to your application's logging setup, which controls format and level. Without any configuration, Python shows only warnings and errors.
+
+```python
+import logging
+
+logging.basicConfig(level=logging.INFO)                    # library INFO messages in your format
+logging.getLogger("iceberg_loader").setLevel(logging.DEBUG)  # also the METRIC: load_completed line
+```
+
+If you want the library's own `stderr` handler instead (TEXT or JSON), call `configure_logging` before loading. It attaches that handler and sets `propagate=False`, so messages no longer reach your root handlers:
 
 ```python
 from iceberg_loader.services.logging import configure_logging
@@ -453,7 +462,7 @@ from iceberg_loader.services.logging import configure_logging
 configure_logging(level="WARNING", log_format="JSON")
 ```
 
-To route messages through your own handlers instead, configure first, then adjust the logger it returns (for example, clear its handlers and set `propagate = True`).
+In `TEXT` format the level name is colored when `stderr` is a terminal; set `NO_COLOR=1` to turn that off. Redirected output (files, CI logs) stays plain.
 
 ---
 
@@ -471,13 +480,14 @@ To route messages through your own handlers instead, configure first, then adjus
 - The default `write_mode` is `'overwrite'`. See the note in [Quickstart](#quickstart).
 - `replace_filter` works with `'append'` and `'overwrite'`: both delete matching rows and append (delete-then-append), so `'overwrite'` with a filter does not overwrite the whole table.
 - `replace_filter` must match every row being loaded; rows outside the filter are appended again on each rerun.
+- An empty input with a known schema (an empty `pa.Table`, an IPC stream or `RecordBatchReader` without batches) still runs the write: it creates the table if needed, `'overwrite'` clears the table, and `replace_filter` deletes the matching rows. A plain iterator that yields no batches has no schema: nothing is written, an existing table is left unchanged, and a warning is logged.
 - `replace_filter` cannot be combined with `write_mode='upsert'` (rejected by `LoaderConfig`).
 - Upsert needs `join_cols` (see [Upsert](#upsert-merge-into)).
 
 ### Schema and types
 
 - `schema_evolution=False` (the default): columns that are not in the table are **dropped silently**. Columns missing from the data are written as NULL.
-- With `schema_evolution=False` and `commit_interval > 1`, all batches in one commit must have the same schema, including column order and `string` vs `large_string`; otherwise the load fails with `pyarrow.lib.ArrowInvalid`. Enable `schema_evolution` or keep batch schemas identical.
+- Batches in one commit may have different schemas (column order, extra or missing columns): each batch is cast to the table schema.
 - `schema_evolution=True` adds new top-level columns only. It does not change existing column types.
 - Data is cast to the table's column types. If a safe cast fails for **any** value in a column, the **whole column of that commit** is written as NULL, and a warning naming the column is logged.
 - Lossy casts that PyArrow can perform unsafely go through **without a warning**: floats are truncated to integers (`1.9 → 1`), and integer overflow wraps (`int64 → int32`). The only lossy cast that warns is timestamp precision loss (e.g. ns → us).
@@ -647,7 +657,7 @@ the file bounds untrustworthy; `auto` falls back to a scan in those cases. See
     'batches_processed': int,
     'write_mode': str,
     'partition_col': str,        # the string 'none' when not set
-    'table_location': str,       # the string 'none' when no batches were loaded
+    'table_location': str,       # the string 'none' when the table does not exist after the load
     'snapshot_id': int | str,    # the string 'none' when there is no snapshot
     'new_table_created': bool,   # True only when this load created the table
     'conform_ms': float,         # conforming batches: table load/create, schema evolution commits, casts
@@ -664,7 +674,7 @@ Note that the "empty" values are the string `'none'`, not `None`.
 - **Timings:** `total_ms - conform_ms - write_ms` is mostly the time spent reading the input (a generator, an IPC stream) plus the final snapshot lookup, so a slow source shows up there, not in `write_ms`.
 - **Cast counters** count distinct columns per load, not rows, batches, or buffers: a column cast in every batch counts once, regardless of `commit_interval`, `schema_evolution`, or how the input is chunked. `casts_lossy` covers timestamp precision loss, float→int truncation, and integer overflow (wrapped values). A column whose batches behaved differently can be counted in both `casts_applied` and `casts_failed`.
 
-Each successful load emits one `METRIC: load_completed` info log with the same timing and cast fields. A load that raises emits no metric.
+Each successful load emits one `METRIC: load_completed` debug log with the same timing and cast fields. A load that raises emits no metric.
 
 ### Usage Examples
 

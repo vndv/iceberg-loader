@@ -31,7 +31,7 @@ Data flow, module dependencies, and a "where to make changes" table: `docs/ARCHI
 ## Conventions
 
 - Style is enforced by ruff (`pyproject.toml`): single quotes, 120-char lines.
-- Log through the package logger: `from iceberg_loader.services.logging import logger`. It does not propagate to root, so in tests read warnings with the `loader_warnings` fixture, not bare `caplog`.
+- Log through the package logger: `from iceberg_loader.services.logging import logger`. It has only a `NullHandler` and propagates to root, but `configure_logging()` (called by some test modules) turns propagation off, so in tests read warnings with the `loader_warnings` fixture, which forces propagation on, not bare `caplog`.
 - Tests run against a real sqlite-backed catalog: the `sql_catalog` fixture in `tests/conftest.py`. Assert on table contents and snapshots, not on mocks.
 - Every load option goes through `LoaderConfig`; new options are added there with validation.
 - User-visible behavior changes get a line in the `Unreleased` section of `RELEASE.md`; breaking ones go under `Breaking Changes`.
@@ -42,7 +42,8 @@ Data flow, module dependencies, and a "where to make changes" table: `docs/ARCHI
 - The default `write_mode` is `'overwrite'`: `LoaderConfig()` or `config=None` replaces the table. Set `write_mode` explicitly in tests, examples, and docs.
 - `commit_interval=0` (the default) and `1` both mean one commit per batch. A load is atomic only when all batches fit in one buffer.
 - All `table_properties`, including `format-version`, apply only when the loader creates the table.
-- `schema_evolution=False` (the default) drops unknown columns silently, and with `commit_interval > 1` every batch in a buffer must have an identical schema (column order included) or `pa.concat_tables` raises `ArrowInvalid`. With `True`, only new top-level columns are added.
+- `schema_evolution=False` (the default) drops unknown columns silently. With `True`, only new top-level columns are added.
+- An empty input with a schema (empty `pa.Table`, IPC stream, `RecordBatchReader`) still writes: `overwrite` clears the table. A plain empty iterator writes nothing and leaves an existing table as is.
 - A string column partitioned with `year`/`month`/`day`/`hour` is promoted to `timestamp(us)` at table creation, so `replace_filter` on it needs a timestamp literal (`'2023-01-01T00:00:00'`).
 - `replace_filter` and `write_mode='upsert'` are mutually exclusive; upsert needs `join_cols`.
 - Identity partitioning on the load timestamp column (`_load_dttm`) is rejected; use `day(...)` or `hour(...)`.

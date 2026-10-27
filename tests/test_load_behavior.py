@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
@@ -100,13 +101,23 @@ def test_schema_evolution_adds_new_column_midstream(sql_catalog: SqlCatalog, com
     assert result['new_table_created'] is True
 
 
-def test_mixed_buffer_without_schema_evolution_raises(sql_catalog: SqlCatalog) -> None:
-    batches = [batch(id=[1]), batch(id=[2], extra=['x'])]
+def test_schema_evolution_failed_cast_nulls_only_its_batch(sql_catalog: SqlCatalog) -> None:
+    load_data_to_iceberg(pa.table({'id': [0], 'n': [0]}), TID, sql_catalog, APPEND)
+    batches = [batch(id=[1], n=['123']), batch(id=[2], n=['invalid'])]
+    config = LoaderConfig(write_mode='append', schema_evolution=True, commit_interval=2)
 
-    with pytest.raises(pa.ArrowInvalid):
-        load_batches_to_iceberg(iter(batches), TID, sql_catalog, LoaderConfig(write_mode='append', commit_interval=2))
+    load_batches_to_iceberg(iter(batches), TID, sql_catalog, config)
 
-    assert not sql_catalog.table_exists(TID)
+    assert read_rows(sql_catalog) == [{'id': 0, 'n': 0}, {'id': 1, 'n': 123}, {'id': 2, 'n': None}]
+
+
+def test_mixed_buffer_without_schema_evolution_drops_unknown_columns(sql_catalog: SqlCatalog) -> None:
+    batches = [batch(id=[1], v=['a']), batch(extra=['x'], id=[2]), batch(v=['c'], id=[3])]
+
+    load_batches_to_iceberg(iter(batches), TID, sql_catalog, LoaderConfig(write_mode='append', commit_interval=3))
+
+    assert sql_catalog.load_table(TID).schema().column_names == ['id', 'v']
+    assert read_rows(sql_catalog) == [{'id': 1, 'v': 'a'}, {'id': 2, 'v': None}, {'id': 3, 'v': 'c'}]
 
 
 def test_without_schema_evolution_unknown_columns_are_dropped(sql_catalog: SqlCatalog) -> None:
@@ -210,6 +221,61 @@ def test_empty_iterator_creates_no_table(sql_catalog: SqlCatalog) -> None:
     assert result['table_location'] == 'none'
     assert result['snapshot_id'] == 'none'
     assert not sql_catalog.table_exists(TID)
+
+
+def test_empty_iterator_leaves_existing_table_and_reports_it(
+    sql_catalog: SqlCatalog, loader_warnings: Callable[[], list[str]]
+) -> None:
+    load_data_to_iceberg(pa.table({'id': [1]}), TID, sql_catalog, APPEND)
+    table = sql_catalog.load_table(TID)
+    snapshot = table.current_snapshot()
+    assert snapshot is not None
+
+    result = load_batches_to_iceberg(iter([]), TID, sql_catalog, LoaderConfig(write_mode='overwrite'))
+
+    assert read_rows(sql_catalog) == [{'id': 1}]
+    assert result['table_location'] == table.location()
+    assert result['snapshot_id'] == snapshot.snapshot_id
+    assert result['new_table_created'] is False
+    assert any('no batches' in message for message in loader_warnings())
+
+
+def test_empty_table_creates_table(sql_catalog: SqlCatalog) -> None:
+    empty = pa.table({'id': pa.array([], pa.int64()), 'v': pa.array([], pa.string())})
+
+    result = load_data_to_iceberg(empty, TID, sql_catalog, APPEND)
+
+    assert sql_catalog.load_table(TID).schema().column_names == ['id', 'v']
+    assert result['new_table_created'] is True
+    assert result['rows_loaded'] == 0
+    assert result['batches_processed'] == 0
+    assert result['table_location'] != 'none'
+
+
+def test_empty_table_overwrite_clears_table(sql_catalog: SqlCatalog) -> None:
+    load_data_to_iceberg(pa.table({'id': [1, 2]}), TID, sql_catalog, APPEND)
+
+    result = load_data_to_iceberg(
+        pa.table({'id': pa.array([], pa.int64())}), TID, sql_catalog, LoaderConfig(write_mode='overwrite')
+    )
+
+    snapshot = sql_catalog.load_table(TID).current_snapshot()
+    assert snapshot is not None
+    assert read_rows(sql_catalog) == []
+    assert result['snapshot_id'] == snapshot.snapshot_id
+
+
+def test_empty_table_replace_filter_deletes_matching_rows(sql_catalog: SqlCatalog) -> None:
+    load_data_to_iceberg(pa.table({'id': [1, 2]}), TID, sql_catalog, APPEND)
+
+    load_data_to_iceberg(
+        pa.table({'id': pa.array([], pa.int64())}),
+        TID,
+        sql_catalog,
+        LoaderConfig(write_mode='append', replace_filter='id = 1'),
+    )
+
+    assert read_rows(sql_catalog) == [{'id': 2}]
 
 
 def test_mixed_buffer_keeps_partition_on_load_timestamp(sql_catalog: SqlCatalog) -> None:

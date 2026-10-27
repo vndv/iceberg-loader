@@ -26,3 +26,32 @@ def test_load_ipc_stream(sql_catalog: SqlCatalog) -> None:
     assert len(list(table.snapshots())) == 2
     assert result['rows_loaded'] == 4
     assert result['batches_processed'] == 2
+
+
+def test_empty_ipc_stream_overwrite_clears_table(sql_catalog: SqlCatalog) -> None:
+    identifier = ('default', 'streaming_test')
+    load_ipc_stream_to_iceberg(
+        _stream(pa.schema([pa.field('id', pa.int64())]), [[1, 2]]),
+        identifier,
+        sql_catalog,
+        LoaderConfig(write_mode='append'),
+    )
+
+    result = load_ipc_stream_to_iceberg(
+        _stream(pa.schema([pa.field('id', pa.int64())]), []),
+        identifier,
+        sql_catalog,
+        LoaderConfig(write_mode='overwrite'),
+    )
+
+    assert sql_catalog.load_table(identifier).scan().to_arrow().num_rows == 0
+    assert result['batches_processed'] == 0
+
+
+def _stream(schema: pa.Schema, batches: list[list[int]]) -> io.BytesIO:
+    sink = io.BytesIO()
+    with pa.ipc.new_stream(sink, schema) as writer:
+        for ids in batches:
+            writer.write_batch(pa.RecordBatch.from_pydict({'id': ids}, schema=schema))
+    sink.seek(0)
+    return sink
