@@ -5,6 +5,7 @@ from iceberg_loader.core.loader import (
     load_data_to_iceberg,
     load_ipc_stream_to_iceberg,
 )
+from iceberg_loader.core.register import register_parquet_files
 from iceberg_loader.core.schema import SchemaManager
 from iceberg_loader.core.strategies import (
     AppendStrategy,
@@ -31,4 +32,5 @@ __all__ = [
     'load_batches_to_iceberg',
     'load_data_to_iceberg',
     'load_ipc_stream_to_iceberg',
+    'register_parquet_files',
 ]

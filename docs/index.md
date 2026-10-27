@@ -70,6 +70,7 @@ load_data_to_iceberg(data, ("db", "users"), catalog, config=config)
 | `load_data_to_iceberg` | You have a single `pa.Table` in memory. | `pyarrow.Table` |
 | `load_batches_to_iceberg` | You have a generator/iterator of batches (memory efficient). | Iterator of `pyarrow.RecordBatch` |
 | `load_ipc_stream_to_iceberg` | You are reading from an Arrow IPC stream file/socket. | File-like object or path |
+| `register_parquet_files` | The data already exists as Parquet and should be referenced, not rewritten. | Paths to Parquet files |
 
 ---
 
@@ -325,6 +326,32 @@ expire_snapshots(table, keep_last=2)
 - **Known issue:** the cutoff is computed as a local naive `datetime`, which PyIceberg reads as UTC. On a host whose timezone is not UTC, both options are shifted by the UTC offset, so more or fewer snapshots than requested can be expired. `keep_last=0` expires nothing. Run maintenance with `TZ=UTC` until this is fixed.
 - Errors during expiration (commit conflicts, I/O, invalid arguments) are logged as warnings and not raised.
 
+### Registering Existing Parquet Files
+
+If the data already exists as Parquet, register the files instead of reading and rewriting them:
+
+```python
+from iceberg_loader import register_parquet_files
+
+result = register_parquet_files(
+    ["/data/events/part-0001.parquet", "/data/events/part-0002.parquet"],
+    ("db", "events"),
+    catalog,
+)
+# {'files_added': 2, 'rows_added': 1500, 'snapshot_id': 1234567890, 'table_location': '...'}
+```
+
+- **Metadata-only:** the files are referenced by the table; they are not copied, converted, or moved. Their physical location must stay reachable by every reader for as long as the data is expected to be readable.
+- The table must already exist. Partitioned tables are supported: partition values are inferred from each file's Parquet statistics, so each file must stay within one partition and must have min/max statistics for the partition source columns. A file without them raises `ValueError` (its partition value would be `NULL` and filtered reads would skip its rows); PyIceberg rejects a file that spans more than one partition.
+- Footers are read through the table's FileIO (so catalog S3 credentials apply) and every file is validated before anything is committed: one bad file leaves no snapshot.
+- Missing nullable columns are allowed and read as `NULL`. An unknown column, a missing required column, or a required column stored as optional raises `ValueError` naming the file and column.
+- Files with embedded Parquet field IDs (`PARQUET:field_id`, written by Iceberg/Spark writers) raise `ValueError`: PyIceberg maps them by ID, not by name, so columns could be read swapped or as `NULL`. Load such data with `load_data_to_iceberg` instead.
+- Nanosecond timestamps raise `ValueError` unless the table column is a nanosecond timestamp.
+- Column type compatibility follows PyIceberg's promotion rules (for example `int32` → `int64`); an incompatible type raises `ValueError` naming the file, column and both types. Nested and unmapped column types are left to PyIceberg's own validation.
+- `check_duplicate_files=True` (default) refuses files already referenced by the current snapshot. Paths are compared after normalization, so `/data/a.parquet` and `file:///data/a.parquet` count as the same file, both within one call and against the table. Passing `False` skips the table check, logs a warning, and can duplicate rows.
+- Paths must be absolute local paths or URIs (`file://`, `s3://`, …); they are stored in the table exactly as given. Relative paths raise `ValueError`.
+- Use this for migration. Use `load_data_to_iceberg` when the data is in memory, needs schema evolution, or needs a write mode such as overwrite or upsert.
+
 ### Incremental Loading with a Watermark
 
 For append-only sources, read the high watermark from the destination, filter the source with
@@ -445,7 +472,7 @@ To route messages through your own handlers instead, configure first, then adjus
 ### Schema and types
 
 - `schema_evolution=False` (the default): columns that are not in the table are **dropped silently**. Columns missing from the data are written as NULL.
-- With `schema_evolution=False` and `commit_interval > 1`, all batches in one commit must have the same schema, including column order; otherwise the load fails with `pyarrow.lib.ArrowInvalid`. Enable `schema_evolution` or keep batch schemas identical.
+- With `schema_evolution=False` and `commit_interval > 1`, all batches in one commit must have the same schema, including column order and `string` vs `large_string`; otherwise the load fails with `pyarrow.lib.ArrowInvalid`. Enable `schema_evolution` or keep batch schemas identical.
 - `schema_evolution=True` adds new top-level columns only. It does not change existing column types.
 - Data is cast to the table's column types. If a safe cast fails for **any** value in a column, the **whole column of that commit** is written as NULL, and a warning naming the column is logged.
 - Lossy casts that PyArrow can perform unsafely go through **without a warning**: floats are truncated to integers (`1.9 → 1`), and integer overflow wraps (`int64 → int32`). The only lossy cast that warns is timestamp precision loss (e.g. ns → us).
@@ -571,6 +598,23 @@ def expire_snapshots(table: Table, keep_last: int = 1, older_than_ms: int | None
 
 See [Maintenance Helper](#maintenance-helper).
 
+### `register_parquet_files()`
+
+Registers existing Parquet files in an existing Iceberg table without rewriting them.
+
+```python
+def register_parquet_files(
+    file_paths: Sequence[str],
+    table_identifier: tuple[str, str],
+    catalog: Catalog,
+    *,
+    snapshot_properties: dict[str, str] | None = None,
+    check_duplicate_files: bool = True,
+) -> dict[str, Any]
+```
+
+Returns `{'files_added': int, 'rows_added': int, 'snapshot_id': int | str, 'table_location': str}`. `snapshot_id` is the string `'none'` when there is no snapshot. See [Registering Existing Parquet Files](#registering-existing-parquet-files).
+
 ### `get_high_watermark()`
 
 Returns the maximum visible value of `column`, for filtering the source of an incremental load.
@@ -601,10 +645,21 @@ the file bounds untrustworthy; `auto` falls back to a scan in those cases. See
     'table_location': str,       # the string 'none' when no batches were loaded
     'snapshot_id': int | str,    # the string 'none' when there is no snapshot
     'new_table_created': bool,
+    'conform_ms': float,         # conforming batches: table load/create, schema evolution commits, casts
+    'write_ms': float,           # writing and committing batches
+    'total_ms': float,           # the whole load, excluding config resolution
+    'casts_applied': int,        # columns successfully cast (including lossy)
+    'casts_lossy': int,          # subset of applied that only succeeded in unsafe mode (truncated or wrapped values)
+    'casts_failed': int,         # columns with a failed cast, filled with NULLs
 }
 ```
 
 Note that the "empty" values are the string `'none'`, not `None`.
+
+- **Timings:** `total_ms - conform_ms - write_ms` is mostly the time spent reading the input (a generator, an IPC stream) plus the final snapshot lookup, so a slow source shows up there, not in `write_ms`.
+- **Cast counters** count distinct columns per load, not rows, batches, or buffers: a column cast in every batch counts once, regardless of `commit_interval`, `schema_evolution`, or how the input is chunked. `casts_lossy` covers timestamp precision loss, float→int truncation, and integer overflow (wrapped values). A column whose batches behaved differently can be counted in both `casts_applied` and `casts_failed`.
+
+Each successful load emits one `METRIC: load_completed` info log with the same timing and cast fields. A load that raises emits no metric.
 
 ### Usage Examples
 
@@ -664,7 +719,7 @@ For how the package is put together, see [Architecture](ARCHITECTURE.md).
 ## Public API & versioning
 
 - Semantic Versioning from `0.1.x`: MINOR = new compatible features, PATCH = fixes, MAJOR = breaking changes. Breaking changes to documented APIs are noted in `RELEASE.md`.
-- Public API: `LoaderConfig`, `IcebergLoader`, `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg`, `get_high_watermark`, `get_rest_catalog`, `expire_snapshots`. Data conversion helpers live in `iceberg_loader.utils.arrow`. Other modules are internal.
+- Public API: `LoaderConfig`, `IcebergLoader`, `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg`, `register_parquet_files`, `get_high_watermark`, `get_rest_catalog`, `expire_snapshots`. Data conversion helpers live in `iceberg_loader.utils.arrow`. Other modules are internal.
 - Pass loading options via `LoaderConfig`; avoid legacy positional arguments.
 - Prefer partition transforms for timestamps (`day(ts)`, `hour(ts)`, `day(_load_dttm)`) to avoid unbounded partition counts.
 - LoaderConfig validates partition expressions and forbids unsafe mixes (e.g., `replace_filter` with `upsert`, identity partition on `_load_dttm`).

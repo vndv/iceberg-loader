@@ -59,9 +59,7 @@ def __getattr__(name: str) -> LogMethod | Any:
 
 
 def metrics(name: str, extra: Mapping[str, Any], stacklevel: int = 1) -> None:
-    """Forwards metrics call to LOGGER as an info log with extra data."""
-    if LOGGER:
-        LOGGER.info(f'METRIC: {name}', extra={'metrics': extra}, stacklevel=stacklevel)
+    get_logger().info(f'METRIC: {name}', extra={'metrics': extra}, stacklevel=stacklevel)
 
 
 @contextlib.contextmanager

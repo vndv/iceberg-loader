@@ -6,7 +6,7 @@ import pyarrow as pa
 from iceberg_loader.core.config import LoaderConfig
 from iceberg_loader.core.schema import SchemaManager
 from iceberg_loader.services.logging import logger
-from iceberg_loader.utils.arrow import convert_table_types
+from iceberg_loader.utils.arrow import CastStats, convert_table_types
 
 
 class BatchConformer:
@@ -43,6 +43,7 @@ class BatchConformer:
         self._requested_format_version = requested_format_version
         self.table: Any | None = None
         self.new_table_created = False
+        self.cast_stats = CastStats()
 
     def conform(self, batches: list[pa.RecordBatch]) -> pa.Table:
         if not batches:
@@ -67,7 +68,7 @@ class BatchConformer:
                 self._schema_manager.evolve_schema_if_needed(table, schema)
 
         target_schema = self._schema_manager.get_arrow_schema(table)
-        return pa.concat_tables([convert_table_types(t, target_schema) for t in tables])
+        return pa.concat_tables([convert_table_types(t, target_schema, self.cast_stats) for t in tables])
 
     def _with_load_timestamp(self, data: pa.Table) -> pa.Table:
         if not self._config.load_timestamp:

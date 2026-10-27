@@ -1,5 +1,7 @@
+import dataclasses
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass
 from functools import partial
 from typing import Any
 
@@ -9,6 +11,23 @@ import pyarrow.compute as pc
 from iceberg_loader.services.logging import logger
 
 _json_dumps = partial(json.dumps, ensure_ascii=False, separators=(',', ':'))
+
+
+@dataclass
+class CastStats:
+    """Names of the columns cast during one load.
+
+    Each column is counted once per load, however many batches or buffers it was cast in.
+    - ``applied``: columns with at least one successful cast, including lossy ones.
+    - ``lossy``: subset of ``applied`` whose cast only succeeded in unsafe mode, so values may be
+      truncated or wrapped (timestamp precision, float->int, int overflow, etc.).
+    - ``failed``: columns with at least one failed cast that was NULL-filled. A column can be in
+      both ``applied`` and ``failed`` when its batches behaved differently.
+    """
+
+    applied: set[str] = dataclasses.field(default_factory=set)
+    lossy: set[str] = dataclasses.field(default_factory=set)
+    failed: set[str] = dataclasses.field(default_factory=set)
 
 
 def _get_memory_pool() -> pa.MemoryPool:
@@ -58,21 +77,34 @@ def _create_table_native(data: list[dict[str, Any]]) -> pa.Table:
     return pa.Table.from_arrays(arrays, schema=pa.schema(fields))
 
 
-def convert_column_type(column: pa.Array, target_type: pa.DataType, column_name: str | None = None) -> pa.Array:
+def convert_column_type(
+    column: pa.Array,
+    target_type: pa.DataType,
+    column_name: str | None = None,
+    stats: CastStats | None = None,
+) -> pa.Array:
     """Casts a single column to the target type, handling errors gracefully."""
     if column.type.equals(target_type):
         return column
+    name = column_name or '<unknown>'
 
     try:
-        return pc.cast(column, target_type, safe=True)
+        result = pc.cast(column, target_type, safe=True)
     except (ValueError, TypeError, pa.ArrowInvalid):
         pass
+    else:
+        if stats is not None:
+            stats.applied.add(name)
+        return result
 
     try:
         result = pc.cast(column, target_type, safe=False)
     except (ValueError, TypeError, pa.ArrowInvalid):
         pass
     else:
+        if stats is not None:
+            stats.applied.add(name)
+            stats.lossy.add(name)
         if _is_coarser_timestamp(target_type, column.type):
             logger.warning(
                 'Timestamp precision lost for column %s (%s -> %s). Values were truncated.',
@@ -82,6 +114,8 @@ def convert_column_type(column: pa.Array, target_type: pa.DataType, column_name:
             )
         return result
 
+    if stats is not None:
+        stats.failed.add(name)
     logger.warning(
         'Cast failed for column %s (%s -> %s). Filling with NULLs.',
         column_name or '<unknown>',
@@ -100,13 +134,17 @@ def _is_coarser_timestamp(target_type: pa.DataType, source_type: pa.DataType) ->
     return _TIMESTAMP_UNITS.index(target_type.unit) < _TIMESTAMP_UNITS.index(source_type.unit)
 
 
-def convert_table_types(table: pa.Table, target_schema: pa.Schema) -> pa.Table:
+def convert_table_types(table: pa.Table, target_schema: pa.Schema, stats: CastStats | None = None) -> pa.Table:
     if table.schema.equals(target_schema):
         return table
-    return _convert_table_types_internal(table, target_schema)
+    return _convert_table_types_internal(table, target_schema, stats)
 
 
-def _convert_table_types_internal(table: pa.Table, target_schema: pa.Schema) -> pa.Table:
+def _convert_table_types_internal(
+    table: pa.Table,
+    target_schema: pa.Schema,
+    stats: CastStats | None,
+) -> pa.Table:
     source_fields = {field.name: field for field in table.schema}
     new_arrays, new_fields = [], []
 
@@ -119,7 +157,7 @@ def _convert_table_types_internal(table: pa.Table, target_schema: pa.Schema) -> 
                 new_arrays.append(column)
                 new_fields.append(field)
             else:
-                new_array = convert_column_type(column, field.type, field.name)
+                new_array = convert_column_type(column, field.type, field.name, stats)
                 new_arrays.append(new_array)
                 new_fields.append(
                     pa.field(field.name, new_array.type, nullable=field.nullable, metadata=field.metadata),

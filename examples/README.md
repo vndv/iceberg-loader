@@ -109,8 +109,23 @@ uv run python maintenance_example.py
 # Load timestamp column + time-transform partitioning
 uv run python load_timestamp_partitioning.py
 
+# DuckDB as source and SQL transform engine (needs duckdb)
+uv run --with 'duckdb>=1.1,<3' python load_from_duckdb.py
+
+# Polars DataFrame source (needs polars)
+uv run --with 'polars>=1,<3' python load_from_polars.py
+
+# PyArrow Dataset streaming with multiple commits
+uv run python load_pyarrow_dataset.py
+
+# Load timings and cast counters in the result and METRIC log
+uv run python load_observability.py
+
+# Register existing Parquet files without rewriting them
+uv run python register_parquet_files.py
+
 # Incremental load using a high watermark (DuckDB source)
-uv run --with duckdb python watermark_incremental.py
+uv run --with 'duckdb>=1.1,<3' python watermark_incremental.py
 ```
 
 Run the local smoke subset:
@@ -137,4 +152,9 @@ The smoke suite runs the fast examples against the bundled Docker stack, includi
 - `load_from_api.py`: REST API batches.
 - `maintenance_example.py`: snapshot expiration.
 - `load_timestamp_partitioning.py`: `_load_dttm` load timestamp with `day`/`hour` partitioning, and the rejected identity partition.
+- `load_from_duckdb.py`: DuckDB as source and SQL transform engine (join + aggregate), loaded from an Arrow result.
+- `load_from_polars.py`: Polars `DataFrame` transform, loaded via `to_arrow()`.
+- `load_pyarrow_dataset.py`: PyArrow `Dataset` streaming through `load_batches_to_iceberg` with `commit_interval=2`.
+- `load_observability.py`: `conform_ms`/`write_ms`/`total_ms` timings and per-column `casts_*` counters.
+- `register_parquet_files.py`: register externally written Parquet files on S3, and the rejected duplicate registration.
 - `watermark_incremental.py`: full load, then an incremental DuckDB query filtered by `get_high_watermark()`.
