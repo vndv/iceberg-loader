@@ -81,9 +81,9 @@ uv run python load_from_api.py
 uv run python maintenance_example.py
 uv run python rest_catalog_example.py
 uv run python load_timestamp_partitioning.py
-python load_pyarrow_dataset.py
-python load_from_duckdb.py   # needs duckdb
-python load_from_polars.py   # needs polars
+uv run python load_pyarrow_dataset.py
+uv run --with duckdb python load_from_duckdb.py
+uv run --with polars python load_from_polars.py
 ```
 
 ---
