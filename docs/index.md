@@ -334,12 +334,16 @@ For append-only sources, read the high watermark from the destination, filter th
 from iceberg_loader import LoaderConfig, get_high_watermark, load_data_to_iceberg
 
 watermark = get_high_watermark(("db", "events"), "updated_at", catalog)
-new_rows = source.query("SELECT * FROM events WHERE updated_at > ?", [watermark])
+if watermark is None:  # first run or empty table: `> NULL` would match nothing
+    new_rows = source.query("SELECT * FROM events")
+else:
+    new_rows = source.query("SELECT * FROM events WHERE updated_at > ?", [watermark])
 load_data_to_iceberg(new_rows, ("db", "events"), catalog, LoaderConfig(write_mode="append"))
 ```
 
 `get_high_watermark` returns the maximum visible value of the column in its Python type, or `None`
-when the table has no rows or the column is all `NULL`. **Persisting the watermark between runs is
+when the table has no rows or the column is all `NULL` (or NaN). Handle `None` explicitly: passing it
+to `> ?` filters out every source row, so the pipeline would never load anything. **Persisting the watermark between runs is
 the orchestrator's job** (an Airflow Variable/XCom, a database row, an object in S3, and so on);
 this helper never stores checkpoints.
 
@@ -347,7 +351,7 @@ this helper never stores checkpoints.
 |------|---------------|------|-------|
 | `auto` (default) | Metadata when its preconditions hold, otherwise a scan | Cheapest that is correct | Silent fallback; the reason is logged at debug level |
 | `metadata` | Maximum `upper_bound` in the data-file metadata | Manifests only | Top-level numeric/temporal columns, no delete files; raises `ValueError` otherwise |
-| `scan` | The visible column, then `max()` | Full column scan | Works for every primitive type and accounts for delete files |
+| `scan` | The visible column, batch by batch, then `max()` | Full column scan | Works for every primitive type; accounts for position deletes (PyIceberg raises on equality deletes) |
 
 Correctness caveats:
 
@@ -355,6 +359,8 @@ Correctness caveats:
   refuses those columns (`ValueError` suggesting `mode="scan"`). `auto` falls back to a scan.
 - **Delete files:** data-file bounds may include rows hidden by deletes, so `metadata` mode refuses
   tables with delete files. `scan` reads only visible rows.
+- **NaN:** ignored for `float`/`double` columns. A column with only NaN and `NULL` returns `None` from
+  `scan`/`auto`; `metadata` refuses it because PyIceberg does not record NaN counts.
 - **Equal timestamps:** a late-arriving row whose timestamp is equal to or below the watermark is
   not re-read by `> watermark`. Use `>=` with a de-duplicating strategy if that can happen.
 

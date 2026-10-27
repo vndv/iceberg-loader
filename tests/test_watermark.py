@@ -272,3 +272,42 @@ def test_new_column_without_upper_bound_in_older_file(sql_catalog: SqlCatalog) -
     with pytest.raises(ValueError, match='no upper bound'):
         get_high_watermark(TABLE, 'added', sql_catalog, mode='metadata')
     assert get_high_watermark(TABLE, 'added', sql_catalog, mode='auto') == 7
+
+
+def test_renamed_column_reads_bounds_by_field_id(sql_catalog: SqlCatalog) -> None:
+    load(sql_catalog, pa.table({'id': pa.array([1, 5, 3], pa.int64())}))
+    with sql_catalog.load_table(TABLE).update_schema() as update:
+        update.rename_column('id', 'event_id')
+
+    assert get_high_watermark(TABLE, 'event_id', sql_catalog, mode='metadata') == 5
+    assert get_high_watermark(TABLE, 'event_id', sql_catalog, mode='scan') == 5
+
+
+def test_nan_is_ignored_in_both_modes(sql_catalog: SqlCatalog) -> None:
+    load(sql_catalog, pa.table({'v': pa.array([1.0, float('nan'), 2.5], pa.float64())}))
+
+    assert get_high_watermark(TABLE, 'v', sql_catalog, mode='metadata') == 2.5
+    assert get_high_watermark(TABLE, 'v', sql_catalog, mode='scan') == 2.5
+
+
+def test_only_nan_and_null_returns_none_from_scan(sql_catalog: SqlCatalog) -> None:
+    load(sql_catalog, pa.table({'v': pa.array([float('nan'), None, float('nan')], pa.float64())}))
+
+    # PyIceberg does not record NaN counts, so the file looks like it lacks a bound.
+    with pytest.raises(ValueError, match='no upper bound'):
+        get_high_watermark(TABLE, 'v', sql_catalog, mode='metadata')
+    assert get_high_watermark(TABLE, 'v', sql_catalog, mode='auto') is None
+    assert get_high_watermark(TABLE, 'v', sql_catalog, mode='scan') is None
+
+
+def test_counts_only_metrics_fall_back_to_scan(sql_catalog: SqlCatalog) -> None:
+    load_data_to_iceberg(
+        pa.table({'id': pa.array([4, 9], pa.int64())}),
+        TABLE,
+        sql_catalog,
+        LoaderConfig(write_mode='append', table_properties={'write.metadata.metrics.default': 'counts'}),
+    )
+
+    with pytest.raises(ValueError, match='no upper bound'):
+        get_high_watermark(TABLE, 'id', sql_catalog, mode='metadata')
+    assert get_high_watermark(TABLE, 'id', sql_catalog, mode='auto') == 9

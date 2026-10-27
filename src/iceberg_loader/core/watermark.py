@@ -9,6 +9,7 @@ this module never persists checkpoints.
 
 from __future__ import annotations
 
+import math
 from typing import Any, Literal, NamedTuple
 
 import pyarrow.compute as pc
@@ -79,8 +80,9 @@ def get_high_watermark(
 
     Modes:
         ``scan``: reads the column from the table (``scan(selected_fields=(column,))``) and takes
-            its maximum. Works for every primitive type, including ``string``/``binary``, and
-            accounts for delete files. Cost is a full column scan.
+            its maximum batch by batch. Works for every primitive type, including
+            ``string``/``binary``, and accounts for position delete files (PyIceberg raises on
+            equality deletes). Cost is a full column scan.
         ``metadata``: takes the maximum ``upper_bound`` from data-file metadata. Reads only
             manifests and table metadata, so it is much cheaper, but only for top-level numeric or
             temporal columns and only when no delete files exist. Raises ``ValueError`` instead of
@@ -89,7 +91,7 @@ def get_high_watermark(
             to ``scan`` otherwise.
 
     Returns the value in the column's Python type, or ``None`` when the table has no rows or the
-    column is all ``NULL``.
+    column is all ``NULL`` (or NaN). Handle ``None`` on the first run, for example with a full load.
 
     Nested (struct/list/map) columns raise ``ValueError`` in every mode.
 
@@ -97,9 +99,9 @@ def get_high_watermark(
         * String and binary bounds are truncated, so ``metadata`` mode refuses them.
         * Data-file bounds may describe rows hidden by delete files, so ``metadata`` mode refuses
           tables with delete files. ``scan`` reflects the deletes.
-        * ``float``/``double`` watermarks are only correct for finite values: Iceberg excludes NaN
-          from float bounds, while Arrow's ``pc.max`` propagates NaN, so the two modes can disagree
-          when NaNs are present.
+        * NaN is ignored for ``float``/``double`` columns: Iceberg excludes it from bounds and the
+          scan skips it. A column that holds only NaN and ``NULL`` returns ``None`` from ``scan``;
+          ``metadata`` refuses it unless the writer recorded NaN counts.
         * A late-arriving row whose timestamp is equal to or below the watermark is not re-read;
           use ``>=`` with a de-duplicating strategy if equal-timestamp late arrivals are possible.
 
@@ -210,9 +212,12 @@ def _readable_metrics(data_file: dict[str, Any], column: str) -> dict[str, Any] 
 
 
 def _is_all_null(metrics: dict[str, Any]) -> bool:
+    """True when every value is NULL or NaN, so the file has no bound to contribute."""
     value_count = metrics.get('value_count')
     null_value_count = metrics.get('null_value_count')
-    return value_count is not None and value_count == null_value_count
+    if value_count is None or null_value_count is None:
+        return False
+    return value_count == null_value_count + (metrics.get('nan_value_count') or 0)
 
 
 def _raise_if_metadata_untrusted(
@@ -241,9 +246,12 @@ def _upper_bound(data_file: dict[str, Any], column: str) -> Any:
 
 
 def _max_from_scan(table: Table, column: str) -> Any:
-    """Scan the visible column and return its maximum, or None for no/all-NULL rows."""
-    values = table.scan(selected_fields=(column,)).to_arrow().column(column)
-    if len(values) == 0 or values.null_count == len(values):
-        return None
-    # PyArrow's type stubs do not declare the dynamically generated compute functions.
-    return pc.max(values).as_py()  # ty: ignore[unresolved-attribute]
+    """Scan the visible column batch by batch and return its maximum, or None for no/all-NULL/NaN rows."""
+    batch_maxima = []
+    for batch in table.scan(selected_fields=(column,)).to_arrow_batch_reader():
+        # PyArrow's type stubs do not declare the dynamically generated compute functions.
+        batch_max = pc.max(batch.column(column)).as_py()  # ty: ignore[unresolved-attribute]
+        # pc.max skips NaN unless every non-null value is NaN.
+        if batch_max is not None and not (isinstance(batch_max, float) and math.isnan(batch_max)):
+            batch_maxima.append(batch_max)
+    return max(batch_maxima) if batch_maxima else None
