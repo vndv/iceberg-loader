@@ -1,6 +1,6 @@
 # Examples
 
-The scripts in [`examples/`](https://github.com/vndvtech/iceberg-loader/tree/main/examples) cover loading, catalog setup, and maintenance.
+The scripts in [`examples/`](https://github.com/vndv/iceberg-loader/tree/main/examples) cover loading, catalog setup, and maintenance.
 
 ## Prerequisites
 
@@ -24,21 +24,21 @@ Then run examples from the same `examples/` directory (see commands below). With
 
 | Example | Description |
 |---------|-------------|
-| [`load_with_commits.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_with_commits.py) | Commit interval for long streams |
-| [`load_upsert.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_upsert.py) | Upsert (merge) by key columns |
-| [`advanced_scenarios.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/advanced_scenarios.py) | Schema evolution, custom types, partitioning |
-| [`load_complex_json.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_complex_json.py) | Messy JSON handling |
-| [`compare_complex_json_fail.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/compare_complex_json_fail.py) | PyArrow fails on mixed types, iceberg-loader succeeds |
+| [`load_with_commits.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_with_commits.py) | Commit interval for long streams |
+| [`load_upsert.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_upsert.py) | Upsert (merge) by key columns |
+| [`advanced_scenarios.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/advanced_scenarios.py) | Schema evolution, custom types, partitioning |
+| [`load_complex_json.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_complex_json.py) | Messy JSON handling |
+| [`compare_complex_json_fail.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/compare_complex_json_fail.py) | PyArrow fails on mixed types, iceberg-loader succeeds |
 
 ## Other Examples
 
 | Example | Description |
 |---------|-------------|
-| [`load_stream.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_stream.py) | Arrow IPC stream loading |
-| [`load_from_api.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_from_api.py) | Simulated REST API ingestion |
-| [`maintenance_example.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/maintenance_example.py) | Snapshot expiration |
-| [`rest_catalog_example.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/rest_catalog_example.py) | REST Catalog setup (Polaris/Tabular) with `get_rest_catalog()` |
-| [`load_timestamp_partitioning.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_timestamp_partitioning.py) | `_load_dttm` load timestamp + time-transform partitioning |
+| [`load_stream.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_stream.py) | Arrow IPC stream loading |
+| [`load_from_api.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_from_api.py) | Simulated REST API ingestion |
+| [`maintenance_example.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/maintenance_example.py) | Snapshot expiration |
+| [`rest_catalog_example.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/rest_catalog_example.py) | REST Catalog setup (Polaris/Tabular) with `get_rest_catalog()` |
+| [`load_timestamp_partitioning.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/load_timestamp_partitioning.py) | `_load_dttm` load timestamp + time-transform partitioning |
 | [`register_parquet_files.py`](https://github.com/vndv/iceberg-loader/blob/main/examples/register_parquet_files.py) | Register existing Parquet files without rewriting them |
 
 ## Running
