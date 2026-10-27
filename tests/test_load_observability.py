@@ -6,7 +6,7 @@ import pyarrow as pa
 import pytest
 from pyiceberg.catalog.sql import SqlCatalog
 
-from iceberg_loader import LoaderConfig, load_data_to_iceberg
+from iceberg_loader import LoaderConfig, load_batches_to_iceberg, load_data_to_iceberg
 
 TID = ('default', 'events')
 APPEND = LoaderConfig(write_mode='append')
@@ -54,7 +54,7 @@ def test_lossy_timestamp_cast_is_counted_and_stored_truncated(sql_catalog: SqlCa
     )
 
     assert result['casts_lossy'] == 1
-    assert result['casts_applied'] >= 1
+    assert result['casts_applied'] == 1
     assert result['casts_failed'] == 0
     stored = sorted(sql_catalog.load_table(TID).scan().to_arrow().column('ts').cast(pa.int64()).to_pylist())
     assert stored == [1_700_000_000_000_000, 1_700_000_000_123_456]
@@ -120,3 +120,57 @@ def test_metrics_emits_when_logger_was_not_configured() -> None:
         logging_mod.LOGGER = previous
         if logging_mod.LOGGER is None:
             logging_mod.get_logger()
+
+
+def float_batches(count: int) -> list[pa.RecordBatch]:
+    return [pa.record_batch({'id': [i], 'v': pa.array([i + 0.5], pa.float64())}) for i in range(count)]
+
+
+@pytest.mark.parametrize(
+    'config',
+    [
+        LoaderConfig(write_mode='append'),
+        LoaderConfig(write_mode='append', commit_interval=10),
+        LoaderConfig(write_mode='append', commit_interval=4),
+        LoaderConfig(write_mode='append', commit_interval=10, schema_evolution=True),
+    ],
+    ids=['per-batch', 'one-buffer', 'three-buffers', 'schema-evolution'],
+)
+def test_cast_counters_count_columns_once_per_load(sql_catalog: SqlCatalog, config: LoaderConfig) -> None:
+    load_data_to_iceberg(pa.table({'id': [0], 'v': [0]}), TID, sql_catalog, APPEND)
+
+    result = load_batches_to_iceberg(iter(float_batches(10)), TID, sql_catalog, config)
+
+    assert result['batches_processed'] == 10
+    assert (result['casts_applied'], result['casts_lossy'], result['casts_failed']) == (1, 1, 0)
+    assert len(read_rows(sql_catalog)) == 11
+
+
+def test_cast_counters_ignore_input_chunking(sql_catalog: SqlCatalog) -> None:
+    load_data_to_iceberg(pa.table({'id': [0], 'v': [0]}), TID, sql_catalog, APPEND)
+    chunked = pa.Table.from_batches(float_batches(10))
+    assert chunked.column('v').num_chunks == 10
+
+    result = load_data_to_iceberg(chunked, TID, sql_catalog, APPEND)
+
+    assert (result['casts_applied'], result['casts_lossy'], result['casts_failed']) == (1, 1, 0)
+
+
+@pytest.mark.parametrize(
+    'config',
+    [
+        LoaderConfig(write_mode='append'),
+        LoaderConfig(write_mode='overwrite'),
+        LoaderConfig(write_mode='upsert', join_cols=['id']),
+        LoaderConfig(write_mode='append', replace_filter='id >= 0'),
+    ],
+    ids=['append', 'overwrite', 'upsert', 'replace-filter'],
+)
+def test_counters_and_timings_in_every_write_mode(sql_catalog: SqlCatalog, config: LoaderConfig) -> None:
+    load_data_to_iceberg(pa.table({'id': [0], 'v': [0]}), TID, sql_catalog, APPEND)
+
+    result = load_data_to_iceberg(pa.Table.from_batches(float_batches(3)), TID, sql_catalog, config)
+
+    assert (result['casts_applied'], result['casts_lossy'], result['casts_failed']) == (1, 1, 0)
+    assert 0 <= result['conform_ms'] + result['write_ms'] <= result['total_ms']
+    assert sorted(row['v'] for row in read_rows(sql_catalog) if row['id'] in (1, 2)) == [1, 2]

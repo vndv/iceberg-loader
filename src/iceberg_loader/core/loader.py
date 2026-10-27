@@ -132,9 +132,9 @@ class IcebergLoader:
         conform_ms = round(conform_ms, 3)
         write_ms = round(write_ms, 3)
         total_ms = round(total_ms, 3)
-        casts_applied = conformer.cast_stats.applied
-        casts_lossy = conformer.cast_stats.lossy
-        casts_failed = conformer.cast_stats.failed
+        casts_applied = len(conformer.cast_stats.applied)
+        casts_lossy = len(conformer.cast_stats.lossy)
+        casts_failed = len(conformer.cast_stats.failed)
 
         metrics(
             'load_completed',

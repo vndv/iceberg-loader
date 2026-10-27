@@ -1,3 +1,4 @@
+import dataclasses
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -14,18 +15,19 @@ _json_dumps = partial(json.dumps, ensure_ascii=False, separators=(',', ':'))
 
 @dataclass
 class CastStats:
-    """Counts of column casts performed during one load.
+    """Names of the columns cast during one load.
 
-    Invariants:
-    - ``applied``: casts that succeeded, including lossy ones.
-    - ``lossy``: subset of ``applied`` that only succeeded in unsafe mode, so values may be
-      truncated or wrapped (timestamp precision, float->int, etc.).
-    - ``failed``: disjoint from both; the column was NULL-filled.
+    Each column is counted once per load, however many batches or buffers it was cast in.
+    - ``applied``: columns with at least one successful cast, including lossy ones.
+    - ``lossy``: subset of ``applied`` whose cast only succeeded in unsafe mode, so values may be
+      truncated or wrapped (timestamp precision, float->int, int overflow, etc.).
+    - ``failed``: columns with at least one failed cast that was NULL-filled. A column can be in
+      both ``applied`` and ``failed`` when its batches behaved differently.
     """
 
-    applied: int = 0
-    lossy: int = 0
-    failed: int = 0
+    applied: set[str] = dataclasses.field(default_factory=set)
+    lossy: set[str] = dataclasses.field(default_factory=set)
+    failed: set[str] = dataclasses.field(default_factory=set)
 
 
 def _get_memory_pool() -> pa.MemoryPool:
@@ -84,6 +86,7 @@ def convert_column_type(
     """Casts a single column to the target type, handling errors gracefully."""
     if column.type.equals(target_type):
         return column
+    name = column_name or '<unknown>'
 
     try:
         result = pc.cast(column, target_type, safe=True)
@@ -91,7 +94,7 @@ def convert_column_type(
         pass
     else:
         if stats is not None:
-            stats.applied += 1
+            stats.applied.add(name)
         return result
 
     try:
@@ -100,8 +103,8 @@ def convert_column_type(
         pass
     else:
         if stats is not None:
-            stats.applied += 1
-            stats.lossy += 1
+            stats.applied.add(name)
+            stats.lossy.add(name)
         if _is_coarser_timestamp(target_type, column.type):
             logger.warning(
                 'Timestamp precision lost for column %s (%s -> %s). Values were truncated.',
@@ -112,7 +115,7 @@ def convert_column_type(
         return result
 
     if stats is not None:
-        stats.failed += 1
+        stats.failed.add(name)
     logger.warning(
         'Cast failed for column %s (%s -> %s). Filling with NULLs.',
         column_name or '<unknown>',
