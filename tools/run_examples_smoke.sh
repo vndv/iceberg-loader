@@ -51,6 +51,7 @@ examples=(
   "load_timestamp_partitioning.py"
   "maintenance_example.py"
   "rest_catalog_example.py"
+  "load_pyarrow_dataset.py"
   "load_observability.py"
 )
 
@@ -58,5 +59,11 @@ for example in "${examples[@]}"; do
   echo "Running ${example}..."
   uv run python "$example"
 done
+
+echo "Running load_from_duckdb.py (with duckdb)..."
+uv run --with 'duckdb>=1.1,<3' python load_from_duckdb.py
+
+echo "Running load_from_polars.py (with polars)..."
+uv run --with 'polars>=1,<3' python load_from_polars.py
 
 echo "Example smoke suite completed successfully."
