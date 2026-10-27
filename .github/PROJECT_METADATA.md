@@ -32,7 +32,7 @@ Add these topics to your repository (Settings → Topics):
 4. Add the topics in the "Topics" field (comma-separated or one by one)
 5. Set the website to the GitHub Pages URL:
    ```
-   https://vndvtech.github.io/iceberg-loader/
+   https://vndv.github.io/iceberg-loader/
    ```
 6. Check these boxes:
    - ☑️ Releases

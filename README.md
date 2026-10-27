@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/vndvtech/iceberg-loader/main/logo.png" alt="iceberg-loader" width="600">
+  <img src="https://raw.githubusercontent.com/vndv/iceberg-loader/main/logo.png" alt="iceberg-loader" width="600">
 </p>
 
 # iceberg-loader
@@ -8,10 +8,10 @@
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/iceberg-loader.svg)](https://pypi.org/project/iceberg-loader)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/iceberg-loader.svg)](https://pypi.org/project/iceberg-loader)
 [![Total Downloads](https://img.shields.io/pepy/dt/iceberg-loader.svg)](https://pepy.tech/projects/iceberg-loader)
-[![CI](https://github.com/vndvtech/iceberg-loader/actions/workflows/ci.yml/badge.svg)](https://github.com/vndvtech/iceberg-loader/actions/workflows/ci.yml)
+[![CI](https://github.com/vndv/iceberg-loader/actions/workflows/ci.yml/badge.svg)](https://github.com/vndv/iceberg-loader/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-📚 [Documentation](https://vndvtech.github.io/iceberg-loader/)
+📚 [Documentation](https://vndv.github.io/iceberg-loader/)
 
 iceberg-loader wraps [PyIceberg](https://py.iceberg.apache.org/) to load data into Apache Iceberg tables. It uses PyArrow and handles mixed JSON fields, schema evolution, idempotent replacement, upserts, batching, and streaming.
 
@@ -135,7 +135,7 @@ catalog = load_catalog("my-rest-catalog")
 
 ## Documentation
 
-The [documentation site](https://vndvtech.github.io/iceberg-loader/) covers data preparation helpers, idempotent loads, upserts, batching, table properties, logging, the full `LoaderConfig` and API reference, and a **Behavior & gotchas** section (commit atomicity, dropped columns, partitioning limits) worth reading before production use. Versioning policy and the public API are described there too; changes are listed in [RELEASE.md](RELEASE.md).
+The [documentation site](https://vndv.github.io/iceberg-loader/) covers data preparation helpers, idempotent loads, upserts, batching, table properties, logging, the full `LoaderConfig` and API reference, and a **Behavior & gotchas** section (commit atomicity, dropped columns, partitioning limits) worth reading before production use. Versioning policy and the public API are described there too; changes are listed in [RELEASE.md](RELEASE.md).
 
 ## Contributing
 
@@ -148,8 +148,8 @@ uv run pytest
 
 ## Contributors
 
-<a href="https://github.com/vndvtech/iceberg-loader/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=vndvtech/iceberg-loader" />
+<a href="https://github.com/vndv/iceberg-loader/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=vndv/iceberg-loader" />
 </a>
 
 Made with [contrib.rocks](https://contrib.rocks).

@@ -129,4 +129,4 @@
 
 # Earlier releases
 
-Releases 0.0.2–0.0.5 and 0.1.0–0.1.2 have no entries in this file. See the [git tags](https://github.com/vndvtech/iceberg-loader/tags) and [GitHub Releases](https://github.com/vndvtech/iceberg-loader/releases).
+Releases 0.0.2–0.0.5 and 0.1.0–0.1.2 have no entries in this file. See the [git tags](https://github.com/vndv/iceberg-loader/tags) and [GitHub Releases](https://github.com/vndv/iceberg-loader/releases).

@@ -673,7 +673,7 @@ For how the package is put together, see [Architecture](ARCHITECTURE.md).
 
 ## Development
 
-See [CONTRIBUTING.md](https://github.com/vndvtech/iceberg-loader/blob/main/CONTRIBUTING.md) for dev setup, tests, code style, and the release checklist.
+See [CONTRIBUTING.md](https://github.com/vndv/iceberg-loader/blob/main/CONTRIBUTING.md) for dev setup, tests, code style, and the release checklist.
 
 ---
 
