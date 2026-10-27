@@ -1,3 +1,8 @@
+# Unreleased
+
+## Highlights
+- **New helper**: `get_high_watermark()` returns the maximum visible value of a column so callers can filter an incremental source with `> watermark`. `auto`/`metadata`/`scan` modes trade manifest-only reads for exact scans and fail loud when metadata bounds cannot be trusted.
+
 # Release 0.2.0 — 2026-10-26
 
 ## Highlights

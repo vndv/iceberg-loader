@@ -325,6 +325,41 @@ expire_snapshots(table, keep_last=2)
 - **Known issue:** the cutoff is computed as a local naive `datetime`, which PyIceberg reads as UTC. On a host whose timezone is not UTC, both options are shifted by the UTC offset, so more or fewer snapshots than requested can be expired. `keep_last=0` expires nothing. Run maintenance with `TZ=UTC` until this is fixed.
 - Errors during expiration (commit conflicts, I/O, invalid arguments) are logged as warnings and not raised.
 
+### Incremental Loading with a Watermark
+
+For append-only sources, read the high watermark from the destination, filter the source with
+`> watermark`, and load only the rows that arrived after the previous run:
+
+```python
+from iceberg_loader import LoaderConfig, get_high_watermark, load_data_to_iceberg
+
+watermark = get_high_watermark(("db", "events"), "updated_at", catalog)
+new_rows = source.query("SELECT * FROM events WHERE updated_at > ?", [watermark])
+load_data_to_iceberg(new_rows, ("db", "events"), catalog, LoaderConfig(write_mode="append"))
+```
+
+`get_high_watermark` returns the maximum visible value of the column in its Python type, or `None`
+when the table has no rows or the column is all `NULL`. **Persisting the watermark between runs is
+the orchestrator's job** (an Airflow Variable/XCom, a database row, an object in S3, and so on);
+this helper never stores checkpoints.
+
+| Mode | What it reads | Cost | Notes |
+|------|---------------|------|-------|
+| `auto` (default) | Metadata when its preconditions hold, otherwise a scan | Cheapest that is correct | Silent fallback; the reason is logged at debug level |
+| `metadata` | Maximum `upper_bound` in the data-file metadata | Manifests only | Top-level numeric/temporal columns, no delete files; raises `ValueError` otherwise |
+| `scan` | The visible column, then `max()` | Full column scan | Works for every primitive type and accounts for delete files |
+
+Correctness caveats:
+
+- **Truncated string bounds:** Iceberg truncates `string`/`binary` statistics, so `metadata` mode
+  refuses those columns (`ValueError` suggesting `mode="scan"`). `auto` falls back to a scan.
+- **Delete files:** data-file bounds may include rows hidden by deletes, so `metadata` mode refuses
+  tables with delete files. `scan` reads only visible rows.
+- **Equal timestamps:** a late-arriving row whose timestamp is equal to or below the watermark is
+  not re-read by `> watermark`. Use `>=` with a de-duplicating strategy if that can happen.
+
+Nested, dotted, and unknown column names raise `ValueError` naming the available top-level columns.
+
 ### Adding Load Timestamp
 
 Set `load_timestamp` to add a timestamp column (by default, `_load_dttm`) to every row. You can use it for audit trails or partitioning by load time.
@@ -530,6 +565,25 @@ def expire_snapshots(table: Table, keep_last: int = 1, older_than_ms: int | None
 
 See [Maintenance Helper](#maintenance-helper).
 
+### `get_high_watermark()`
+
+Returns the maximum visible value of `column`, for filtering the source of an incremental load.
+
+```python
+def get_high_watermark(
+    table_identifier: tuple[str, str],
+    column: str,
+    catalog: Catalog,
+    *,
+    mode: Literal["auto", "metadata", "scan"] = "auto",
+) -> Any
+```
+
+The value is returned in the column's Python type, or `None` when the table has no rows or the
+column is all `NULL`. `metadata` raises `ValueError` when the column type or the table state makes
+the file bounds untrustworthy; `auto` falls back to a scan in those cases. See
+[Incremental Loading with a Watermark](#incremental-loading-with-a-watermark) for the trade-offs.
+
 ### Return value of the load functions
 
 ```python
@@ -604,7 +658,7 @@ For how the package is put together, see [Architecture](ARCHITECTURE.md).
 ## Public API & versioning
 
 - Semantic Versioning from `0.1.x`: MINOR = new compatible features, PATCH = fixes, MAJOR = breaking changes. Breaking changes to documented APIs are noted in `RELEASE.md`.
-- Public API: `LoaderConfig`, `IcebergLoader`, `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg`, `get_rest_catalog`, `expire_snapshots`. Data conversion helpers live in `iceberg_loader.utils.arrow`. Other modules are internal.
+- Public API: `LoaderConfig`, `IcebergLoader`, `load_data_to_iceberg`, `load_batches_to_iceberg`, `load_ipc_stream_to_iceberg`, `get_high_watermark`, `get_rest_catalog`, `expire_snapshots`. Data conversion helpers live in `iceberg_loader.utils.arrow`. Other modules are internal.
 - Pass loading options via `LoaderConfig`; avoid legacy positional arguments.
 - Prefer partition transforms for timestamps (`day(ts)`, `hour(ts)`, `day(_load_dttm)`) to avoid unbounded partition counts.
 - LoaderConfig validates partition expressions and forbids unsafe mixes (e.g., `replace_filter` with `upsert`, identity partition on `_load_dttm`).

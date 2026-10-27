@@ -14,6 +14,7 @@ from iceberg_loader.core.strategies import (
     WriteStrategy,
     get_write_strategy,
 )
+from iceberg_loader.core.watermark import get_high_watermark
 
 __all__ = [
     'TABLE_PROPERTIES',
@@ -25,6 +26,7 @@ __all__ = [
     'SchemaManager',
     'UpsertStrategy',
     'WriteStrategy',
+    'get_high_watermark',
     'get_write_strategy',
     'load_batches_to_iceberg',
     'load_data_to_iceberg',

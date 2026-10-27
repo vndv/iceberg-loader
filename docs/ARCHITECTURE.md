@@ -90,6 +90,7 @@ Third-party: `pyarrow` (`core.loader`, `core.conform`, `core.schema`, `core.stra
 | Change dict → Arrow conversion | `utils/arrow.py` |
 | Add a log format | `services/logging.py` → `JsonFormatter` / `TextFormatter` |
 | Add a maintenance utility | `services/maintenance.py` → `SnapshotMaintenance` |
+| Read a high watermark for incremental loads | `core/watermark.py` → `get_high_watermark()` |
 | Configure the REST catalog helper | `catalog.py` → `get_rest_catalog()` |
 | Add an example | `examples/<name>.py` + `examples/README.md` + `docs/examples.md` |
 

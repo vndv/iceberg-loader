@@ -58,4 +58,7 @@ for example in "${examples[@]}"; do
   uv run python "$example"
 done
 
+echo "Running watermark_incremental.py (with duckdb)..."
+uv run --with duckdb python watermark_incremental.py
+
 echo "Example smoke suite completed successfully."
