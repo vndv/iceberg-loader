@@ -79,8 +79,8 @@ def register_parquet_files(
 
 
 def _read_parquet_file(path: str) -> _ParquetFile:
-    parquet_file = pq.ParquetFile(path)
-    return _ParquetFile(path=path, schema=parquet_file.schema_arrow, num_rows=parquet_file.metadata.num_rows)
+    with pq.ParquetFile(path) as parquet_file:
+        return _ParquetFile(path=path, schema=parquet_file.schema_arrow, num_rows=parquet_file.metadata.num_rows)
 
 
 def _validate_file_schemas(files: list[_ParquetFile], table_schema: Schema, table_name: str) -> None:

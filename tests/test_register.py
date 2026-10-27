@@ -8,6 +8,8 @@ import pytest
 from pyiceberg.catalog.sql import SqlCatalog
 from pyiceberg.exceptions import NoSuchTableError
 from pyiceberg.expressions import EqualTo, Reference
+from pyiceberg.schema import Schema
+from pyiceberg.types import LongType, NestedField, StringType
 
 from iceberg_loader import LoaderConfig, load_data_to_iceberg, register_parquet_files
 
@@ -204,6 +206,26 @@ def test_snapshot_properties_are_recorded(sql_catalog: SqlCatalog, tmp_path: Pat
     assert snapshot is not None
     assert snapshot.summary is not None
     assert snapshot.summary['source'] == 'legacy-export'
+
+
+def test_missing_required_column_raises_without_creating_snapshot(sql_catalog: SqlCatalog, tmp_path: Path) -> None:
+    sql_catalog.create_table(
+        TID,
+        Schema(
+            NestedField(1, 'id', LongType(), required=True),
+            NestedField(2, 'name', StringType(), required=False),
+        ),
+    )
+    path = write_parquet(tmp_path, 'no_id.parquet', pa.table({'name': pa.array(['a'], type=pa.string())}))
+    snapshots_before = snapshot_ids(sql_catalog)
+
+    with pytest.raises(ValueError) as exc_info:
+        register_parquet_files([path], TID, sql_catalog)
+
+    message = str(exc_info.value)
+    assert path in message
+    assert 'id' in message
+    assert snapshot_ids(sql_catalog) == snapshots_before
 
 
 def test_missing_nullable_column_is_read_as_null(sql_catalog: SqlCatalog, tmp_path: Path) -> None:

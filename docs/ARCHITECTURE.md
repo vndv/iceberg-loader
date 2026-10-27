@@ -6,7 +6,7 @@ How `iceberg-loader` moves Arrow data through table setup, schema handling, and 
 
 | Component | Module | Role |
 |-----------|--------|------|
-| Public API | `iceberg_loader/__init__.py` | Re-exports `LoaderConfig`, `IcebergLoader`, the `load_*_to_iceberg` functions, `get_rest_catalog`, `expire_snapshots`, and the module-level `logger`. |
+| Public API | `iceberg_loader/__init__.py` | Re-exports `LoaderConfig`, `IcebergLoader`, the `load_*_to_iceberg` functions, `register_parquet_files`, `get_rest_catalog`, `expire_snapshots`, and the module-level `logger`. |
 | `load_*_to_iceberg` | `core/loader.py` | Thin wrappers: each call builds a new `IcebergLoader` with the given config and delegates to it. |
 | `IcebergLoader` | `core/loader.py` | Orchestrator. Resolves the effective config and table properties, buffers batches up to `commit_interval`, passes each buffer to `BatchConformer`, then writes it with a `WriteStrategy`. |
 | `BatchConformer` | `core/conform.py` | One instance per load. Owns the target table: loads or creates it, appends the load timestamp column, evolves the schema, and casts each buffer to the table schema. |
@@ -27,6 +27,7 @@ How `iceberg-loader` moves Arrow data through table setup, schema handling, and 
 load_data_to_iceberg(pa.Table)            ──► IcebergLoader.load_data()        ── table.to_batches() ──┐
 load_batches_to_iceberg(Iterator[Batch])  ──► IcebergLoader.load_data_batches()                        ├─► load_data_batches()
 load_ipc_stream_to_iceberg(path/stream)   ──► IcebergLoader.load_ipc_stream()  ── pa.ipc.open_stream() ┘
+register_parquet_files(paths)             ──► core/register.py ── footer schema check ── Table.add_files()
 
 load_data_batches()
   ├─ resolve config (per-call config replaces default_config) and table properties
@@ -60,6 +61,7 @@ __init__ ──► core, catalog, services.logging, services.maintenance
 iceberg_loader.py (shim) ──► core.loader, core.config
 
 core.loader     ──► core.config, core.conform, core.schema, core.strategies
+core.register   ──► utils.types, services.logging
 core.conform    ──► core.config, core.schema, utils.arrow, services.logging
 core.schema     ──► core.partitioning, utils.types, services.logging
 core.config     ──► core.partitioning
@@ -73,13 +75,14 @@ services.maintenance ──► services.logging
 services.logging     ──► (standard library only)
 ```
 
-Third-party: `pyarrow` (`core.loader`, `core.conform`, `core.schema`, `core.strategies`, `utils.arrow`, `utils.types`), `pyiceberg` (`core.loader`, `core.schema`, `core.partitioning`, `utils.types`, `catalog`, `services.maintenance`), `pydantic` (`core.config`). Minimum versions are in `pyproject.toml`.
+Third-party: `pyarrow` (`core.loader`, `core.conform`, `core.schema`, `core.strategies`, `core.register`, `utils.arrow`, `utils.types`), `pyiceberg` (`core.loader`, `core.schema`, `core.partitioning`, `core.register`, `utils.types`, `catalog`, `services.maintenance`), `pydantic` (`core.config`). Minimum versions are in `pyproject.toml`.
 
 ## Where to make changes
 
 | Task | Go to |
 |------|-------|
 | Public API entry | `src/iceberg_loader/__init__.py` (and the shim if the wrapper functions change) |
+| Register existing Parquet files | `core/register.py` → `register_parquet_files()` |
 | Add a write mode | `core/strategies.py` → new `WriteStrategy` + `get_write_strategy()`; `core/config.py` → `write_mode` literal |
 | Add or validate a config option | `core/config.py` → `LoaderConfig` |
 | Change default table properties | `core/config.py` → `TABLE_PROPERTIES` |
@@ -100,6 +103,7 @@ Tests run against a real sqlite-backed `SqlCatalog` (`sql_catalog` fixture in `t
 | Module | Test file |
 |--------|-----------|
 | `core.loader` | `tests/test_load_behavior.py`, `tests/test_iceberg_loader.py` |
+| `core.register` | `tests/test_register.py` |
 | `core.conform` | `tests/test_conform.py` |
 | `core.config` | `tests/test_config_validation.py` |
 | `core.partitioning` | `tests/test_partitioning.py` |
