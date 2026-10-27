@@ -1,4 +1,4 @@
-# Unreleased
+# Release 0.3.1 — 2026-10-27
 
 ## Highlights
 - **Dependencies**: `pyiceberg-core` is now a base dependency (`pyiceberg[pyiceberg-core]`). A plain `pip install iceberg-loader` used to fail on `year`/`month`/`day`/`hour`/`bucket`/`truncate` partitioning with `NotInstalledError` after the table had already been created.
