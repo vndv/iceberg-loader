@@ -110,10 +110,10 @@ uv run python maintenance_example.py
 uv run python load_timestamp_partitioning.py
 
 # DuckDB as source and SQL transform engine (needs duckdb)
-uv run --with duckdb python load_from_duckdb.py
+uv run --with 'duckdb>=1.1,<3' python load_from_duckdb.py
 
 # Polars DataFrame source (needs polars)
-uv run --with polars python load_from_polars.py
+uv run --with 'polars>=1,<3' python load_from_polars.py
 
 # PyArrow Dataset streaming with multiple commits
 uv run python load_pyarrow_dataset.py

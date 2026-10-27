@@ -60,9 +60,9 @@ for example in "${examples[@]}"; do
 done
 
 echo "Running load_from_duckdb.py (with duckdb)..."
-uv run --with duckdb python load_from_duckdb.py
+uv run --with 'duckdb>=1.1,<3' python load_from_duckdb.py
 
 echo "Running load_from_polars.py (with polars)..."
-uv run --with polars python load_from_polars.py
+uv run --with 'polars>=1,<3' python load_from_polars.py
 
 echo "Example smoke suite completed successfully."

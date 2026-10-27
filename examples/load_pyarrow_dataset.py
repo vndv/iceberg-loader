@@ -6,6 +6,8 @@ import pyarrow as pa
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from catalog import get_catalog
+from pyiceberg.catalog import Catalog
+from pyiceberg.exceptions import NoSuchTableError
 
 from iceberg_loader import LoaderConfig, load_batches_to_iceberg
 
@@ -31,6 +33,13 @@ def write_source_parquet(directory: Path) -> int:
     return total_rows
 
 
+def count_snapshots(catalog: Catalog, table_id: tuple[str, str]) -> int:
+    try:
+        return len(catalog.load_table(table_id).snapshots())
+    except NoSuchTableError:
+        return 0
+
+
 def main() -> None:
     catalog = get_catalog()
     table_id = ('default', 'pyarrow_dataset_example')
@@ -39,6 +48,7 @@ def main() -> None:
         source_dir = Path(tmp)
         expected_rows = write_source_parquet(source_dir)
 
+        snapshots_before = count_snapshots(catalog, table_id)
         source = ds.dataset(source_dir, format='parquet')
         logger.info('Streaming %d rows from %s', source.count_rows(), source_dir)
 
@@ -62,7 +72,8 @@ def main() -> None:
     assert result['batches_processed'] == 3, f'Expected 3 batches, got {result["batches_processed"]}'
     assert max(arrow.column('id').to_pylist()) == expected_rows - 1, 'Unexpected max id after read-back'
     assert arrow.column('day').to_pylist().count(2) == ROWS_PER_FILE, 'Expected a full day=2 partition'
-    assert len(list(table.snapshots())) >= 2, 'commit_interval=2 should produce at least two commits'
+    new_snapshots = len(table.snapshots()) - snapshots_before
+    assert new_snapshots >= 2, f'commit_interval=2 should produce at least two commits, got {new_snapshots}'
     logger.info('Read-back verified: %d rows across %d batches', arrow.num_rows, result['batches_processed'])
 
 

@@ -34,9 +34,8 @@ def transform_orders() -> pa.Table:
     con.register('orders', build_orders())
     con.register('customers', build_customers())
 
-    # DuckDB is both the source and the transform engine here. A plain SQL join + aggregate
-    # closes the transform/dbt gap for this pipeline, and the result is already a PyArrow
-    # table that iceberg-loader accepts unchanged.
+    # DuckDB is both the source and the transform engine here: it runs the join + aggregate,
+    # and the result is a PyArrow table that iceberg-loader accepts unchanged.
     result = con.sql(
         """
         SELECT c.customer_name,
