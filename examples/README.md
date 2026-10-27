@@ -108,6 +108,9 @@ uv run python maintenance_example.py
 
 # Load timestamp column + time-transform partitioning
 uv run python load_timestamp_partitioning.py
+
+# Load timings and cast counters in the result and METRIC log
+uv run python load_observability.py
 ```
 
 Run the local smoke subset:
@@ -134,3 +137,4 @@ The smoke suite runs the fast examples against the bundled Docker stack, includi
 - `load_from_api.py`: REST API batches.
 - `maintenance_example.py`: snapshot expiration.
 - `load_timestamp_partitioning.py`: `_load_dttm` load timestamp with `day`/`hour` partitioning, and the rejected identity partition.
+- `load_observability.py`: `conform_ms`/`write_ms`/`total_ms` timings and per-column `casts_*` counters.

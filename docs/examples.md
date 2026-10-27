@@ -39,6 +39,7 @@ Then run examples from the same `examples/` directory (see commands below). With
 | [`maintenance_example.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/maintenance_example.py) | Snapshot expiration |
 | [`rest_catalog_example.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/rest_catalog_example.py) | REST Catalog setup (Polaris/Tabular) with `get_rest_catalog()` |
 | [`load_timestamp_partitioning.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_timestamp_partitioning.py) | `_load_dttm` load timestamp + time-transform partitioning |
+| [`load_observability.py`](https://github.com/vndvtech/iceberg-loader/blob/main/examples/load_observability.py) | Load timings and per-column cast counters |
 
 ## Running
 
@@ -60,6 +61,7 @@ python load_from_api.py
 python maintenance_example.py
 python rest_catalog_example.py
 python load_timestamp_partitioning.py
+python load_observability.py
 ```
 
 With [uv](https://docs.astral.sh/uv/):
@@ -75,6 +77,7 @@ uv run python load_from_api.py
 uv run python maintenance_example.py
 uv run python rest_catalog_example.py
 uv run python load_timestamp_partitioning.py
+uv run python load_observability.py
 ```
 
 ---
