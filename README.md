@@ -26,6 +26,7 @@ iceberg-loader wraps [PyIceberg](https://py.iceberg.apache.org/) to load data in
 - **Write modes:** append, overwrite, idempotent replacement via `replace_filter`, and upsert.
 - **Streaming:** commit intervals, batches, and IPC streams.
 - **Configuration:** all options live in one validated `LoaderConfig`; an `IcebergLoader` can hold a default config, and a per-call config replaces it.
+- **Observability:** every load returns `conform_ms`/`write_ms`/`total_ms` timings and per-column cast counters (`casts_applied`, `casts_lossy`, `casts_failed`), and logs them as `METRIC: load_completed`.
 
 ## Benchmark
 

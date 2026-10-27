@@ -541,10 +541,21 @@ See [Maintenance Helper](#maintenance-helper).
     'table_location': str,       # the string 'none' when no batches were loaded
     'snapshot_id': int | str,    # the string 'none' when there is no snapshot
     'new_table_created': bool,
+    'conform_ms': float,         # conforming batches: table load/create, schema evolution commits, casts
+    'write_ms': float,           # writing and committing batches
+    'total_ms': float,           # the whole load, excluding config resolution
+    'casts_applied': int,        # columns successfully cast (including lossy)
+    'casts_lossy': int,          # subset of applied that only succeeded in unsafe mode (truncated or wrapped values)
+    'casts_failed': int,         # columns with a failed cast, filled with NULLs
 }
 ```
 
 Note that the "empty" values are the string `'none'`, not `None`.
+
+- **Timings:** `total_ms - conform_ms - write_ms` is mostly the time spent reading the input (a generator, an IPC stream) plus the final snapshot lookup, so a slow source shows up there, not in `write_ms`.
+- **Cast counters** count distinct columns per load, not rows, batches, or buffers: a column cast in every batch counts once, regardless of `commit_interval`, `schema_evolution`, or how the input is chunked. `casts_lossy` covers timestamp precision loss, float→int truncation, and integer overflow (wrapped values). A column whose batches behaved differently can be counted in both `casts_applied` and `casts_failed`.
+
+Each successful load emits one `METRIC: load_completed` info log with the same timing and cast fields. A load that raises emits no metric.
 
 ### Usage Examples
 

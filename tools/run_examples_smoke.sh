@@ -52,6 +52,7 @@ examples=(
   "maintenance_example.py"
   "rest_catalog_example.py"
   "load_pyarrow_dataset.py"
+  "load_observability.py"
 )
 
 for example in "${examples[@]}"; do

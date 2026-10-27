@@ -117,6 +117,9 @@ uv run --with 'polars>=1,<3' python load_from_polars.py
 
 # PyArrow Dataset streaming with multiple commits
 uv run python load_pyarrow_dataset.py
+
+# Load timings and cast counters in the result and METRIC log
+uv run python load_observability.py
 ```
 
 Run the local smoke subset:
@@ -146,3 +149,4 @@ The smoke suite runs the fast examples against the bundled Docker stack, includi
 - `load_from_duckdb.py`: DuckDB as source and SQL transform engine (join + aggregate), loaded from an Arrow result.
 - `load_from_polars.py`: Polars `DataFrame` transform, loaded via `to_arrow()`.
 - `load_pyarrow_dataset.py`: PyArrow `Dataset` streaming through `load_batches_to_iceberg` with `commit_interval=2`.
+- `load_observability.py`: `conform_ms`/`write_ms`/`total_ms` timings and per-column `casts_*` counters.

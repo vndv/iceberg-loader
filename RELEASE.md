@@ -2,6 +2,7 @@
 
 ## Highlights
 - Arrow `large_string` and `large_binary` types now map to Iceberg `string` and `binary`, so Polars `to_arrow()` output with top-level string/binary columns loads without a manual cast. Nested and dictionary types (`large_list`, Categorical) are still unsupported.
+- **Observability**: Load results now include `conform_ms`, `write_ms`, `total_ms` stage timings and `casts_applied`, `casts_lossy`, `casts_failed` cast counters. Cast counters count distinct columns per load. Each load also emits one `METRIC: load_completed` info log with the same values. Code that compares the whole result dict with `==` needs the new keys.
 
 # Release 0.2.0 — 2026-10-26
 
