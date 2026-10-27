@@ -66,22 +66,25 @@ class SchemaManager:
         _warn_on_format_version_mismatch(table, requested_format_version)
         return table, False
 
-    def evolve_schema_if_needed(self, table: Any, batch_schema: pa.Schema) -> bool:
+    def evolve_schema_if_needed(self, table: Any, *batch_schemas: pa.Schema) -> bool:
         """
-        Checks if the batch schema contains new columns not present in the table schema.
-        If so, creates a schema update transaction to add them.
+        Checks if the batch schemas contain new columns not present in the table schema.
+        If so, adds them all in one schema update transaction, in order of first appearance;
+        a column name seen again in a later schema keeps its first type.
         """
-        current_iceberg_schema = table.schema()
+        existing_names = set(table.schema().column_names)
         new_columns = []
 
-        # Convert Arrow schema to Iceberg schema to leverage TypeRegistry
-        # We only care about top-level fields for simplicity in this version,
-        # but a recursive check would be ideal for nested structs.
-        incoming_iceberg_schema = self._arrow_to_iceberg(batch_schema)
+        for batch_schema in batch_schemas:
+            # Convert Arrow schema to Iceberg schema to leverage TypeRegistry
+            # We only care about top-level fields for simplicity in this version,
+            # but a recursive check would be ideal for nested structs.
+            incoming_iceberg_schema = self._arrow_to_iceberg(batch_schema)
 
-        for field in incoming_iceberg_schema.fields:
-            if field.name not in current_iceberg_schema.column_names:
-                new_columns.append(field)
+            for field in incoming_iceberg_schema.fields:
+                if field.name not in existing_names:
+                    existing_names.add(field.name)
+                    new_columns.append(field)
 
         if not new_columns:
             return False

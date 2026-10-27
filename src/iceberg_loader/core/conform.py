@@ -44,36 +44,43 @@ class BatchConformer:
         self.table: Any | None = None
         self.new_table_created = False
         self.cast_stats = CastStats()
+        self._load_ts_scalar = (
+            pa.scalar(config.load_timestamp, type=pa.timestamp('us')) if config.load_timestamp else None
+        )
 
     def conform(self, batches: list[pa.RecordBatch]) -> pa.Table:
         if not batches:
             raise ValueError('conform() needs at least one batch')
 
-        tables = [self._with_load_timestamp(pa.Table.from_batches([b])) for b in batches]
-        if not self._config.schema_evolution:
+        if self._config.schema_evolution:
+            tables = [self._with_load_timestamp(pa.Table.from_batches([b])) for b in batches]
+        else:
             # Mixed schemas raise pa.ArrowInvalid here, before any table is created.
-            tables = [pa.concat_tables(tables)]
+            tables = [self._with_load_timestamp(pa.Table.from_batches(batches))]
 
         table = self._ensure_table(tables[0].schema)
 
+        # The load timestamp column goes first, then new columns from the batches; one schema commit for all.
+        schemas: list[pa.Schema] = []
         if self._config.load_timestamp:
-            ts_field = pa.field(self._config.load_ts_col, pa.timestamp('us'))
-            self._schema_manager.evolve_schema_if_needed(table, pa.schema([ts_field]))
+            schemas.append(pa.schema([pa.field(self._config.load_ts_col, pa.timestamp('us'))]))
 
         if self._config.schema_evolution:
-            schemas = _distinct_schemas(t.schema for t in tables)
-            if len(schemas) > 1:
+            batch_schemas = _distinct_schemas(t.schema for t in tables)
+            if len(batch_schemas) > 1:
                 logger.info('Mixed schemas in batch buffer. Normalizing...')
-            for schema in schemas:
-                self._schema_manager.evolve_schema_if_needed(table, schema)
+            schemas.extend(batch_schemas)
+
+        if schemas:
+            self._schema_manager.evolve_schema_if_needed(table, *schemas)
 
         target_schema = self._schema_manager.get_arrow_schema(table)
         return pa.concat_tables([convert_table_types(t, target_schema, self.cast_stats) for t in tables])
 
     def _with_load_timestamp(self, data: pa.Table) -> pa.Table:
-        if not self._config.load_timestamp:
+        if self._load_ts_scalar is None:
             return data
-        timestamps = pa.array([self._config.load_timestamp] * len(data), type=pa.timestamp('us'))
+        timestamps = pa.repeat(self._load_ts_scalar, len(data))
         return data.append_column(self._config.load_ts_col, timestamps)
 
     def _ensure_table(self, arrow_schema: pa.Schema) -> Any:

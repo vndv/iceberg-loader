@@ -43,13 +43,14 @@ load_data_batches()
 
 ```
 buffer of RecordBatches
-  ├─ add load timestamp column (if load_timestamp is set)
   ├─ without schema_evolution: concat the buffer (mixed schemas → pa.ArrowInvalid, before any table exists)
+  ├─ add load timestamp column (if load_timestamp is set)
   ├─ first call only: SchemaManager.ensure_table_exists()
   │     new table: promote string partition source to timestamp(us) for time transforms,
   │                build partition spec, apply table properties
   │     existing table: properties and partition spec are left as they are
-  ├─ evolve: add the load timestamp column; with schema_evolution, add new columns from every distinct batch schema
+  ├─ evolve: add the load timestamp column; with schema_evolution, add new columns from every distinct batch schema;
+  │     all in one schema commit per buffer, so a buffer that fails conversion adds no columns
   └─ convert_table_types() to the table's Arrow schema
         unknown columns dropped, missing columns NULL, a column with a failed safe cast all NULL + warning,
         timestamp precision loss (e.g. ns → us) warned

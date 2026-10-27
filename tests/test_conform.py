@@ -75,6 +75,28 @@ def test_mixed_schemas_with_evolution_add_columns(sql_catalog: SqlCatalog) -> No
     assert data.to_pylist() == [{'id': 1, 'extra': None}, {'id': 2, 'extra': 'x'}]
 
 
+def test_new_columns_from_one_buffer_are_added_in_one_schema_commit(sql_catalog: SqlCatalog) -> None:
+    load_data_to_iceberg(pa.table({'id': [1]}), TID, sql_catalog, LoaderConfig(write_mode='append'))
+    config = LoaderConfig(write_mode='append', schema_evolution=True, load_timestamp=datetime(2025, 1, 1))
+    conformer = make_conformer(sql_catalog, config)
+
+    conformer.conform([batch(id=[2], b=['x']), batch(id=[3], a=[1]), batch(id=[4], b=['y'], c=[True])])
+
+    table = sql_catalog.load_table(TID)
+    assert table.schema().column_names == ['id', '_load_dttm', 'b', 'a', 'c']
+    assert len(table.schemas()) == 2
+
+
+def test_failed_schema_evolution_adds_no_columns(sql_catalog: SqlCatalog) -> None:
+    load_data_to_iceberg(pa.table({'id': [1]}), TID, sql_catalog, LoaderConfig(write_mode='append'))
+    conformer = make_conformer(sql_catalog, LoaderConfig(write_mode='append', schema_evolution=True))
+
+    with pytest.raises(ValueError):
+        conformer.conform([batch(id=[2], b=['x']), batch(id=[3], nested=[[1, 2]])])
+
+    assert sql_catalog.load_table(TID).schema().column_names == ['id']
+
+
 def test_mixed_schemas_without_evolution_raise_before_table_creation(sql_catalog: SqlCatalog) -> None:
     conformer = make_conformer(sql_catalog, LoaderConfig(write_mode='append'))
 
