@@ -21,7 +21,7 @@ class BatchConformer:
     - casts to the table schema: unknown columns are dropped, missing columns become NULL,
       values that cannot be cast become NULL with a warning
 
-    Without schema_evolution, a buffer with mixed schemas raises pa.ArrowInvalid before any table is created.
+    A buffer may mix schemas: each run of consecutive batches with one schema is cast separately.
 
     requested_format_version is the format-version the user set explicitly (None when only the library
     default applies). If the table already exists with a different version, a warning is logged and the
@@ -52,11 +52,7 @@ class BatchConformer:
         if not batches:
             raise ValueError('conform() needs at least one batch')
 
-        if self._config.schema_evolution:
-            tables = [self._with_load_timestamp(pa.Table.from_batches([b])) for b in batches]
-        else:
-            # Mixed schemas raise pa.ArrowInvalid here, before any table is created.
-            tables = [self._with_load_timestamp(pa.Table.from_batches(batches))]
+        tables = [self._with_load_timestamp(pa.Table.from_batches(run)) for run in _schema_runs(batches)]
 
         table = self._ensure_table(tables[0].schema)
 
@@ -93,6 +89,17 @@ class BatchConformer:
                 requested_format_version=self._requested_format_version,
             )
         return self.table
+
+
+def _schema_runs(batches: list[pa.RecordBatch]) -> list[list[pa.RecordBatch]]:
+    """Splits batches into runs of consecutive batches with equal schemas; a uniform buffer is one run."""
+    runs: list[list[pa.RecordBatch]] = []
+    for batch in batches:
+        if runs and runs[-1][-1].schema.equals(batch.schema):
+            runs[-1].append(batch)
+        else:
+            runs.append([batch])
+    return runs
 
 
 def _distinct_schemas(schemas: Iterable[pa.Schema]) -> list[pa.Schema]:

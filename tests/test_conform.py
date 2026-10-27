@@ -97,14 +97,13 @@ def test_failed_schema_evolution_adds_no_columns(sql_catalog: SqlCatalog) -> Non
     assert sql_catalog.load_table(TID).schema().column_names == ['id']
 
 
-def test_mixed_schemas_without_evolution_raise_before_table_creation(sql_catalog: SqlCatalog) -> None:
+def test_mixed_schemas_without_evolution_are_cast_to_table_schema(sql_catalog: SqlCatalog) -> None:
     conformer = make_conformer(sql_catalog, LoaderConfig(write_mode='append'))
 
-    with pytest.raises(pa.ArrowInvalid):
-        conformer.conform([batch(id=[1]), batch(id=[2], extra=['x'])])
+    data = conformer.conform([batch(id=[1], v=['a']), batch(extra=['x'], id=[2])])
 
-    assert not sql_catalog.table_exists(TID)
-    assert conformer.table is None
+    assert sql_catalog.load_table(TID).schema().column_names == ['id', 'v']
+    assert data.to_pylist() == [{'id': 1, 'v': 'a'}, {'id': 2, 'v': None}]
 
 
 def test_load_timestamp_exists_before_table_creation(sql_catalog: SqlCatalog) -> None:
