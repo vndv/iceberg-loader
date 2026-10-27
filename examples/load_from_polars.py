@@ -1,7 +1,6 @@
 import logging
 
 import polars as pl  # ty: ignore[unresolved-import]
-import pyarrow as pa
 from catalog import get_catalog
 
 from iceberg_loader import LoaderConfig, load_data_to_iceberg
@@ -25,8 +24,8 @@ def transform_orders() -> pl.DataFrame:
         }
     )
 
-    # Polars does the join and aggregation; the result is handed over as a PyArrow table
-    # via to_arrow() (see to_iceberg_arrow below for the string cast).
+    # Polars does the join and aggregation; to_arrow() hands over a PyArrow table whose
+    # large_string columns iceberg-loader maps to Iceberg string.
     return (
         orders.join(customers, on='customer_id', how='left')
         .group_by('customer_name')
@@ -38,24 +37,11 @@ def transform_orders() -> pl.DataFrame:
     )
 
 
-def to_iceberg_arrow(df: pl.DataFrame) -> pa.Table:
-    """Convert to Arrow, casting Polars' top-level large_string columns to string.
-
-    iceberg-loader's type mapping does not accept large_string. Nested large types (inside
-    list or struct columns) are not handled here.
-    """
-    table = df.to_arrow()
-    schema = pa.schema(
-        [field.with_type(pa.string()) if pa.types.is_large_string(field.type) else field for field in table.schema],
-    )
-    return table.cast(schema)
-
-
 def main() -> None:
     catalog = get_catalog()
     table_id = ('default', 'polars_source_example')
 
-    table_data = to_iceberg_arrow(transform_orders())
+    table_data = transform_orders().to_arrow()
     logger.info('Transformed %d customer rows in Polars', table_data.num_rows)
 
     result = load_data_to_iceberg(

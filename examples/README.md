@@ -144,5 +144,5 @@ The smoke suite runs the fast examples against the bundled Docker stack, includi
 - `maintenance_example.py`: snapshot expiration.
 - `load_timestamp_partitioning.py`: `_load_dttm` load timestamp with `day`/`hour` partitioning, and the rejected identity partition.
 - `load_from_duckdb.py`: DuckDB as source and SQL transform engine (join + aggregate), loaded from an Arrow result.
-- `load_from_polars.py`: Polars `DataFrame` transform, loaded via `to_arrow()` with a `large_string`→`string` cast.
+- `load_from_polars.py`: Polars `DataFrame` transform, loaded via `to_arrow()`.
 - `load_pyarrow_dataset.py`: PyArrow `Dataset` streaming through `load_batches_to_iceberg` with `commit_interval=2`.
