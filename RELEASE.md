@@ -6,6 +6,7 @@
 
 ## Breaking Changes
 - **Logging defaults**: on first use the library used to attach its own `stderr` handler at `INFO` with `propagate=False`. It now attaches nothing: without `logging.basicConfig(...)` or similar, only warnings and errors are shown (Python's last-resort handler). Call `configure_logging()` to get the old stderr output back.
+- **`is_logging()` and `log_level()`** (`iceberg_loader.services`) now report only what `configure_logging()` set: without it they return `False` and `'NOTSET'`. They used to return `True` and `'INFO'` after the first log call, because that call configured the logger.
 - **`METRIC: load_completed` is logged at `DEBUG`** instead of `INFO`. The same values are in the load result dict.
 
 # Release 0.3.2 — 2026-10-27

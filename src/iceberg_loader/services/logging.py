@@ -151,7 +151,7 @@ def configure_logging(
     version: Mapping[str, str] | None = None,
 ) -> Logger:
     """Attaches a stderr handler to the iceberg_loader logger and stops propagation to the root logger."""
-    # metrics() and tests read the module-level LOGGER; replacing the singleton would change that contract.
+    # LOGGER marks that configure_logging() ran (is_logging, log_level, get_logger) and tests reset it.
     global LOGGER  # noqa: PLW0603
 
     logger = logging.getLogger(_LOGGER_NAME)
@@ -179,8 +179,8 @@ def configure_logging(
 
 
 def _stderr_supports_color() -> bool:
-    # https://no-color.org: any non-empty NO_COLOR disables color.
-    return sys.stderr.isatty() and not os.environ.get('NO_COLOR')
+    # https://no-color.org: any non-empty NO_COLOR disables color. stderr is None under pythonw.
+    return sys.stderr is not None and sys.stderr.isatty() and not os.environ.get('NO_COLOR')
 
 
 def get_logger() -> Logger:
