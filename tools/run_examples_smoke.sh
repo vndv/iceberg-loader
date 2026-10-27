@@ -51,6 +51,7 @@ examples=(
   "load_timestamp_partitioning.py"
   "maintenance_example.py"
   "rest_catalog_example.py"
+  "register_parquet_files.py"
 )
 
 for example in "${examples[@]}"; do

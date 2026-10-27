@@ -108,6 +108,9 @@ uv run python maintenance_example.py
 
 # Load timestamp column + time-transform partitioning
 uv run python load_timestamp_partitioning.py
+
+# Register existing Parquet files without rewriting them
+uv run python register_parquet_files.py
 ```
 
 Run the local smoke subset:
@@ -134,3 +137,4 @@ The smoke suite runs the fast examples against the bundled Docker stack, includi
 - `load_from_api.py`: REST API batches.
 - `maintenance_example.py`: snapshot expiration.
 - `load_timestamp_partitioning.py`: `_load_dttm` load timestamp with `day`/`hour` partitioning, and the rejected identity partition.
+- `register_parquet_files.py`: register externally written Parquet files on S3, and the rejected duplicate registration.
