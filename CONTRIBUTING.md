@@ -200,9 +200,9 @@ This is the single release checklist; other documents link here.
 
 ## Getting Help
 
-- **Questions**: Open an [Issue](https://github.com/vndvtech/iceberg-loader/issues)
-- **Bugs**: Open an [Issue](https://github.com/vndvtech/iceberg-loader/issues)
-- **Features**: Open an [Issue](https://github.com/vndvtech/iceberg-loader/issues) with the `enhancement` label
+- **Questions**: Open an [Issue](https://github.com/vndv/iceberg-loader/issues)
+- **Bugs**: Open an [Issue](https://github.com/vndv/iceberg-loader/issues)
+- **Features**: Open an [Issue](https://github.com/vndv/iceberg-loader/issues) with the `enhancement` label
 
 ## Code of Conduct
 
