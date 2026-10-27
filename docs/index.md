@@ -480,13 +480,14 @@ In `TEXT` format the level name is colored when `stderr` is a terminal; set `NO_
 - The default `write_mode` is `'overwrite'`. See the note in [Quickstart](#quickstart).
 - `replace_filter` works with `'append'` and `'overwrite'`: both delete matching rows and append (delete-then-append), so `'overwrite'` with a filter does not overwrite the whole table.
 - `replace_filter` must match every row being loaded; rows outside the filter are appended again on each rerun.
+- An empty input with a known schema (an empty `pa.Table`, an IPC stream or `RecordBatchReader` without batches) still runs the write: it creates the table if needed, `'overwrite'` clears the table, and `replace_filter` deletes the matching rows. A plain iterator that yields no batches has no schema: nothing is written, an existing table is left unchanged, and a warning is logged.
 - `replace_filter` cannot be combined with `write_mode='upsert'` (rejected by `LoaderConfig`).
 - Upsert needs `join_cols` (see [Upsert](#upsert-merge-into)).
 
 ### Schema and types
 
 - `schema_evolution=False` (the default): columns that are not in the table are **dropped silently**. Columns missing from the data are written as NULL.
-- With `schema_evolution=False` and `commit_interval > 1`, all batches in one commit must have the same schema, including column order and `string` vs `large_string`; otherwise the load fails with `pyarrow.lib.ArrowInvalid`. Enable `schema_evolution` or keep batch schemas identical.
+- Batches in one commit may have different schemas (column order, extra or missing columns): each batch is cast to the table schema.
 - `schema_evolution=True` adds new top-level columns only. It does not change existing column types.
 - Data is cast to the table's column types. If a safe cast fails for **any** value in a column, the **whole column of that commit** is written as NULL, and a warning naming the column is logged.
 - Lossy casts that PyArrow can perform unsafely go through **without a warning**: floats are truncated to integers (`1.9 → 1`), and integer overflow wraps (`int64 → int32`). The only lossy cast that warns is timestamp precision loss (e.g. ns → us).
@@ -656,7 +657,7 @@ the file bounds untrustworthy; `auto` falls back to a scan in those cases. See
     'batches_processed': int,
     'write_mode': str,
     'partition_col': str,        # the string 'none' when not set
-    'table_location': str,       # the string 'none' when no batches were loaded
+    'table_location': str,       # the string 'none' when the table does not exist after the load
     'snapshot_id': int | str,    # the string 'none' when there is no snapshot
     'new_table_created': bool,   # True only when this load created the table
     'conform_ms': float,         # conforming batches: table load/create, schema evolution commits, casts
