@@ -26,6 +26,7 @@ iceberg-loader wraps [PyIceberg](https://py.iceberg.apache.org/) to load data in
 - **Write modes:** append, overwrite, idempotent replacement via `replace_filter`, and upsert.
 - **Streaming:** commit intervals, batches, and IPC streams.
 - **Configuration:** all options live in one validated `LoaderConfig`; an `IcebergLoader` can hold a default config, and a per-call config replaces it.
+- **Incremental loads:** `get_high_watermark` returns the largest loaded value of a column, so the next run reads only newer source rows.
 
 ## Benchmark
 
@@ -130,6 +131,7 @@ catalog = load_catalog("my-rest-catalog")
 | `load_data_to_iceberg`       | You have a single `pa.Table` in memory.                      | `pyarrow.Table`                   |
 | `load_batches_to_iceberg`    | You have a generator/iterator of batches (memory efficient). | Iterator of `pyarrow.RecordBatch` |
 | `load_ipc_stream_to_iceberg` | You are reading from an Arrow IPC stream file/socket.        | File-like object or path          |
+| `get_high_watermark`         | You filter the source by the last loaded value.              | Table identifier + column name    |
 
 ## Documentation
 
