@@ -1,7 +1,7 @@
 # Unreleased
 
 ## Highlights
-- Arrow `large_string` and `large_binary` types now map to Iceberg `string` and `binary`, so Polars `DataFrame.to_arrow()` loads without a manual cast.
+- Arrow `large_string` and `large_binary` types now map to Iceberg `string` and `binary`, so Polars `to_arrow()` output with top-level string/binary columns loads without a manual cast. Nested and dictionary types (`large_list`, Categorical) are still unsupported.
 
 # Release 0.2.0 — 2026-10-26
 

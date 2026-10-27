@@ -80,3 +80,15 @@ def test_large_binary_table_column_is_binary(sql_catalog: SqlCatalog) -> None:
     result = sql_catalog.load_table(table_id).scan().to_arrow()
     assert result.column('b').to_pylist() == [b'\x01', b'\x02']
     assert result.schema.field('b').type == pa.binary()
+
+
+def test_large_string_appends_to_existing_string_table(sql_catalog: SqlCatalog) -> None:
+    table_id = ('default', 'existing_string_table')
+    config = LoaderConfig(write_mode='append')
+    load_data_to_iceberg(pa.table({'s': pa.array(['a'], type=pa.string())}), table_id, sql_catalog, config)
+
+    load_data_to_iceberg(pa.table({'s': pa.array(['b'], type=pa.large_string())}), table_id, sql_catalog, config)
+
+    result = sql_catalog.load_table(table_id).scan().to_arrow()
+    assert sorted(result.column('s').to_pylist()) == ['a', 'b']
+    assert result.schema.field('s').type == pa.string()
