@@ -78,15 +78,13 @@ class BatchConformer:
 
     def _ensure_table(self, arrow_schema: pa.Schema) -> Any:
         if self.table is None:
-            self.table = self._schema_manager.ensure_table_exists(
+            self.table, self.new_table_created = self._schema_manager.ensure_table_exists(
                 self._table_identifier,
                 arrow_schema,
                 self._config.partition_col,
                 table_properties=self._table_properties,
                 requested_format_version=self._requested_format_version,
             )
-            if self.table.current_snapshot() is None:
-                self.new_table_created = True
         return self.table
 
 

@@ -52,6 +52,9 @@ username: trino
 password: <empty>
 ```
 
+Trino has two Iceberg catalogs: `iceberg` (Hive Metastore) and `iceberg_rest` (Polaris, `datalake` warehouse).
+Tables created by `rest_catalog_example.py` are visible as `iceberg_rest."default".<table>`.
+
 MinIO:
 
 ```
