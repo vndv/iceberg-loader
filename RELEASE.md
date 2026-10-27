@@ -1,3 +1,10 @@
+# Unreleased
+
+## Highlights
+- **Dependencies**: `pyiceberg-core` is now a base dependency (`pyiceberg[pyiceberg-core]`). A plain `pip install iceberg-loader` used to fail on `year`/`month`/`day`/`hour`/`bucket`/`truncate` partitioning with `NotInstalledError` after the table had already been created.
+- **Fix**: `new_table_created` in the load result is `True` only when the load created the table. An existing table without snapshots (for example, left by a failed load) used to report `True`.
+- **Docs**: the watermark example handles a missing table (`get_high_watermark` raises `NoSuchTableError`), REST catalog Option B no longer requires `ICEBERG_CREDENTIAL`, and the examples stack adds a Trino `iceberg_rest` catalog for Polaris.
+
 # Release 0.3.0 — 2026-10-27
 
 ## Highlights

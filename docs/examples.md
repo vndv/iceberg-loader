@@ -15,8 +15,14 @@ The bundled stack includes:
 
 - **MinIO** (S3) at `http://localhost:9000` (console `http://localhost:9001`, `minio`/`minio123`)
 - **Hive Metastore** at `thrift://localhost:9083`
-- **Trino** at `http://localhost:8080`
+- **Trino** at `http://localhost:8080`, with two catalogs: `iceberg` reads the Hive Metastore, `iceberg_rest` reads Polaris
 - **Apache Polaris** REST Catalog at `http://localhost:8181/api/catalog` (`root`/`root`)
+
+`minio/minio` is no longer published on Docker Hub, so the stack uses `coollabsio/minio`, a rebuild of the official
+release. Use it (or any other S3-compatible store) in your own compose file too.
+
+To query a table loaded through Polaris, prefix it with the REST catalog: `SELECT * FROM iceberg_rest."default".my_table`.
+The Trino side of that is [`trino-etc/catalog/iceberg_rest.properties`](https://github.com/vndv/iceberg-loader/blob/main/examples/trino-etc/catalog/iceberg_rest.properties).
 
 Then run examples from the same `examples/` directory (see commands below). With `uv` you can prefix any command as `uv run python <script.py>`.
 

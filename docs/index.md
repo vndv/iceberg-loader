@@ -102,11 +102,12 @@ The helper also reads from environment variables — see `help(get_rest_catalog)
 import os
 from pyiceberg.catalog.rest import RestCatalog
 
-# Only include S3 properties that are actually set, so unset env vars
+# Only include optional properties that are actually set, so unset env vars
 # don't pass None into RestCatalog.
-s3_properties = {
+optional_properties = {
     key: value
     for key, value in {
+        "credential": os.environ.get("ICEBERG_CREDENTIAL"),  # OAuth2 credential; unset for a catalog without auth
         "s3.endpoint": os.environ.get("S3_ENDPOINT"),
         "s3.access-key-id": os.environ.get("S3_ACCESS_KEY"),
         "s3.secret-access-key": os.environ.get("S3_SECRET_KEY"),
@@ -119,8 +120,7 @@ catalog = RestCatalog(
     name="my-rest-catalog",
     uri=os.environ["ICEBERG_REST_URI"],          # e.g. https://api.tabular.io/ws
     warehouse=os.environ["ICEBERG_WAREHOUSE"],   # e.g. s3://my-bucket/warehouse/
-    credential=os.environ["ICEBERG_CREDENTIAL"], # OAuth2 credential
-    **s3_properties,
+    **optional_properties,
 )
 ```
 
@@ -360,13 +360,18 @@ For append-only sources, read the high watermark from the destination, filter th
 ```python
 from iceberg_loader import LoaderConfig, get_high_watermark, load_data_to_iceberg
 
-watermark = get_high_watermark(("db", "events"), "updated_at", catalog)
+table_id = ("db", "events")
+# A missing table raises NoSuchTableError, so check for it on the first run.
+watermark = get_high_watermark(table_id, "updated_at", catalog) if catalog.table_exists(table_id) else None
 if watermark is None:  # first run or empty table: `> NULL` would match nothing
     new_rows = source.query("SELECT * FROM events")
 else:
     new_rows = source.query("SELECT * FROM events WHERE updated_at > ?", [watermark])
-load_data_to_iceberg(new_rows, ("db", "events"), catalog, LoaderConfig(write_mode="append"))
+load_data_to_iceberg(new_rows, table_id, catalog, LoaderConfig(write_mode="append"))
 ```
+
+A `timestamp` column returns a naive `datetime` and a `timestamptz` column returns a UTC-aware one. Compare it
+with source values of the same kind: Python raises `TypeError` when comparing naive and aware datetimes.
 
 `get_high_watermark` returns the maximum visible value of the column in its Python type, or `None`
 when the table has no rows or the column is all `NULL` (or NaN). Handle `None` explicitly: passing it
@@ -630,7 +635,7 @@ def get_high_watermark(
 ```
 
 The value is returned in the column's Python type, or `None` when the table has no rows or the
-column is all `NULL`. `metadata` raises `ValueError` when the column type or the table state makes
+column is all `NULL`. Raises `NoSuchTableError` when the table does not exist. `metadata` raises `ValueError` when the column type or the table state makes
 the file bounds untrustworthy; `auto` falls back to a scan in those cases. See
 [Incremental Loading with a Watermark](#incremental-loading-with-a-watermark) for the trade-offs.
 
@@ -644,7 +649,7 @@ the file bounds untrustworthy; `auto` falls back to a scan in those cases. See
     'partition_col': str,        # the string 'none' when not set
     'table_location': str,       # the string 'none' when no batches were loaded
     'snapshot_id': int | str,    # the string 'none' when there is no snapshot
-    'new_table_created': bool,
+    'new_table_created': bool,   # True only when this load created the table
     'conform_ms': float,         # conforming batches: table load/create, schema evolution commits, casts
     'write_ms': float,           # writing and committing batches
     'total_ms': float,           # the whole load, excluding config resolution

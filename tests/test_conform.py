@@ -46,6 +46,15 @@ def test_existing_table_with_data_is_not_marked_new(sql_catalog: SqlCatalog) -> 
     assert conformer.new_table_created is False
 
 
+def test_existing_empty_table_is_not_marked_new(sql_catalog: SqlCatalog) -> None:
+    sql_catalog.create_table(TID, schema=pa.schema([('id', pa.int64())]))
+    conformer = make_conformer(sql_catalog, LoaderConfig(write_mode='append'))
+
+    conformer.conform([batch(id=[1])])
+
+    assert conformer.new_table_created is False
+
+
 def test_output_matches_table_schema(sql_catalog: SqlCatalog) -> None:
     load_data_to_iceberg(pa.table({'id': [1], 'v': ['a']}), TID, sql_catalog, LoaderConfig(write_mode='append'))
     conformer = make_conformer(sql_catalog, LoaderConfig(write_mode='append'))
