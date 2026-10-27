@@ -106,3 +106,17 @@ def test_load_completed_metric_is_logged(
     assert payload['casts_lossy'] == result['casts_lossy']
     assert payload['casts_failed'] == result['casts_failed']
     assert loader_warnings() == []
+
+
+def test_metrics_emits_when_logger_was_not_configured() -> None:
+    import iceberg_loader.services.logging as logging_mod
+
+    previous = logging_mod.LOGGER
+    logging_mod.LOGGER = None
+    try:
+        logging_mod.metrics('load_completed', {'rows_loaded': 0})
+        assert logging_mod.LOGGER is not None
+    finally:
+        logging_mod.LOGGER = previous
+        if logging_mod.LOGGER is None:
+            logging_mod.get_logger()

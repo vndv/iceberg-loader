@@ -544,13 +544,13 @@ See [Maintenance Helper](#maintenance-helper).
     'conform_ms': float,         # time spent conforming batches to the table schema
     'write_ms': float,           # time spent writing batches
     'total_ms': float,           # time spent in the load, excluding config resolution
-    'casts_applied': int,        # successful casts (including lossy ones)
-    'casts_lossy': int,          # casts that only succeeded in unsafe mode (values may be truncated, e.g. timestamp precision, float->int)
-    'casts_failed': int,         # casts that failed and were filled with NULLs
+    'casts_applied': int,        # columns successfully cast per buffer (including lossy)
+    'casts_lossy': int,          # subset of applied that only succeeded in unsafe mode (timestamp precision, float->int, …)
+    'casts_failed': int,         # columns that failed and were filled with NULLs
 }
 ```
 
-Note that the "empty" values are the string `'none'`, not `None`.
+Note that the "empty" values are the string `'none'`, not `None`. Cast counters increment once per column per committed buffer (`commit_interval`), not per row. Each load also emits one `METRIC: load_completed` info log with the same timing and cast fields.
 
 ### Usage Examples
 
