@@ -1,3 +1,8 @@
+# Unreleased
+
+## Highlights
+- **Observability**: Load results now include `conform_ms`, `write_ms`, `total_ms` stage timings and `casts_applied`, `casts_lossy`, `casts_failed` cast counters. Each load also emits one `METRIC: load_completed` info log with the same values.
+
 # Release 0.2.0 — 2026-10-26
 
 ## Highlights

@@ -26,7 +26,8 @@ def test_append_creates_table_and_reports_result(sql_catalog: SqlCatalog) -> Non
     snapshot = table.current_snapshot()
     assert snapshot is not None
     assert read_rows(sql_catalog) == [{'id': 1, 'v': 'a'}, {'id': 2, 'v': 'b'}]
-    assert result == {
+    timing_keys = {'conform_ms', 'write_ms', 'total_ms'}
+    assert {key: value for key, value in result.items() if key not in timing_keys} == {
         'rows_loaded': 2,
         'write_mode': 'append',
         'partition_col': 'none',
@@ -34,7 +35,11 @@ def test_append_creates_table_and_reports_result(sql_catalog: SqlCatalog) -> Non
         'snapshot_id': snapshot.snapshot_id,
         'batches_processed': 1,
         'new_table_created': True,
+        'casts_applied': 0,
+        'casts_lossy': 0,
+        'casts_failed': 0,
     }
+    assert all(result[key] >= 0 for key in timing_keys)
 
 
 def test_append_to_existing_table_keeps_rows(sql_catalog: SqlCatalog) -> None:

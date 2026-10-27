@@ -541,6 +541,12 @@ See [Maintenance Helper](#maintenance-helper).
     'table_location': str,       # the string 'none' when no batches were loaded
     'snapshot_id': int | str,    # the string 'none' when there is no snapshot
     'new_table_created': bool,
+    'conform_ms': float,         # time spent conforming batches to the table schema
+    'write_ms': float,           # time spent writing batches
+    'total_ms': float,           # time spent in the load, excluding config resolution
+    'casts_applied': int,        # successful casts (including lossy ones)
+    'casts_lossy': int,          # casts that only succeeded in unsafe mode (values may be truncated, e.g. timestamp precision, float->int)
+    'casts_failed': int,         # casts that failed and were filled with NULLs
 }
 ```
 
