@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.0
+        uses: astral-sh/setup-uv@v10.3.1
         with:
           enable-cache: true
           cache-suffix: ${{ matrix.python-version }}
@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.0
+        uses: astral-sh/setup-uv@v10.3.1
         with:
           enable-cache: true
           cache-suffix: release-examples
@@ -64,7 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.0
+        uses: astral-sh/setup-uv@v10.3.1
         with:
           enable-cache: false
           version: "latest"
